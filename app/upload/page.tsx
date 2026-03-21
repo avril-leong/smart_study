@@ -50,7 +50,9 @@ export default function UploadPage() {
 
     const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd })
     if (!uploadRes.ok) {
-      const { error: msg } = await uploadRes.json()
+      const text = await uploadRes.text()
+      let msg = 'Upload failed'
+      try { msg = JSON.parse(text).error ?? msg } catch {}
       setError(msg); setStage('error'); return
     }
     const { studySetId } = await uploadRes.json()
@@ -71,8 +73,10 @@ export default function UploadPage() {
     clearInterval(pollIntervalRef.current ?? undefined)
 
     if (!genRes.ok) {
-      const { error: msg } = await genRes.json()
-      setError(msg || 'Generation failed'); setStage('error'); return
+      const text = await genRes.text()
+      let msg = 'Generation failed'
+      try { msg = JSON.parse(text).error ?? msg } catch {}
+      setError(msg); setStage('error'); return
     }
 
     setStage('done')
