@@ -622,7 +622,7 @@ Dark-mode interface combining Kahoot's bold gamified energy with thea.study's st
 
 1. Push to GitHub
 2. Connect repo to Vercel → auto-deploy on push to `main`
-3. Set environment variables in Vercel:
+3. Copy `.env.example` to `.env.local` and fill in real values. Add `.env.local` to `.gitignore` (never commit it). Set the same variables in Vercel Dashboard → Project Settings → Environment Variables:
    - `NEXT_PUBLIC_SUPABASE_URL` — public, safe to expose
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` — public, safe to expose (RLS enforced)
    - `SUPABASE_SERVICE_ROLE_KEY` — **server-only, never prefix with `NEXT_PUBLIC_`**

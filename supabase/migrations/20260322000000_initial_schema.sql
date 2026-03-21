@@ -85,9 +85,9 @@ CREATE POLICY "users access own files" ON storage.objects
 
 -- RPC: get next question due for review (SM-2 scheduling)
 CREATE OR REPLACE FUNCTION get_next_question_due(p_study_set_id uuid, p_user_id uuid)
-RETURNS SETOF questions AS $$
-  SELECT q.* FROM questions q
-  JOIN question_state qs ON qs.question_id = q.id AND qs.user_id = p_user_id
+RETURNS SETOF public.questions AS $$
+  SELECT q.* FROM public.questions q
+  JOIN public.question_state qs ON qs.question_id = q.id AND qs.user_id = p_user_id
   WHERE q.study_set_id = p_study_set_id AND qs.next_review <= now()
   ORDER BY qs.next_review ASC LIMIT 1;
 $$ LANGUAGE sql SECURITY DEFINER SET search_path = '';
