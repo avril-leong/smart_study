@@ -1,6 +1,5 @@
 'use client'
 import { useRef, useState } from 'react'
-import { SUPPORTED_TYPES } from '@/lib/parsers/index'
 
 interface Props { onFile: (file: File) => void; disabled?: boolean }
 
@@ -9,6 +8,9 @@ const LABELS: Record<string, string> = {
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOCX',
   'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'PPTX',
 }
+
+// Kept in sync with lib/parsers/index.ts PARSERS map (server-only)
+const SUPPORTED_TYPES = Object.keys(LABELS)
 
 export function DropZone({ onFile, disabled }: Props) {
   const [dragging, setDragging] = useState(false)
