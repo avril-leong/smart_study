@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { DropZone } from '@/components/upload/DropZone'
 import { SubjectSelector } from '@/components/upload/SubjectSelector'
@@ -20,6 +20,13 @@ export default function UploadPage() {
   const [stage, setStage] = useState<Stage>('idle')
   const [error, setError] = useState('')
   const [questionCount, setQuestionCount] = useState(0)
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     createClient().from('subjects').select('*').order('name')
@@ -50,7 +57,7 @@ export default function UploadPage() {
 
     setStage('generating')
 
-    const pollInterval = setInterval(async () => {
+    pollIntervalRef.current = setInterval(async () => {
       const r = await fetch(`/api/generate/status/${studySetId}`)
       const { questionCount: qc } = await r.json()
       setQuestionCount(qc)
@@ -61,7 +68,7 @@ export default function UploadPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ studySetId }),
     })
-    clearInterval(pollInterval)
+    clearInterval(pollIntervalRef.current ?? undefined)
 
     if (!genRes.ok) {
       const { error: msg } = await genRes.json()

@@ -46,7 +46,7 @@ export function DropZone({ onFile, disabled }: Props) {
         </p>
         <input ref={inputRef} type="file" className="hidden" disabled={disabled}
           accept={SUPPORTED_TYPES.join(',')}
-          onChange={e => { const f = e.target.files?.[0]; if (f && validate(f)) onFile(f) }} />
+          onChange={e => { const f = e.target.files?.[0]; if (f && validate(f)) onFile(f); e.target.value = '' }} />
       </div>
       {error && <p className="mt-2 text-sm" style={{ color: 'var(--error)' }}>{error}</p>}
     </div>

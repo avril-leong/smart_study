@@ -56,7 +56,7 @@ export default function SettingsPage() {
         </form>
         <div className="space-y-3">
           {subjects.map(s => (
-            <div key={s.id} className="flex items-center gap-3 p-4 rounded-xl border"
+            <div key={s.id + '-' + s.name} className="flex items-center gap-3 p-4 rounded-xl border"
               style={{ background: 'var(--bg-surface)', borderColor: 'var(--bg-border)' }}>
               <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: s.color }} />
               <input defaultValue={s.name}

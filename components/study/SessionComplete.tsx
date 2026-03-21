@@ -14,7 +14,7 @@ export function SessionComplete({ studySetId, score, total, weakQuestions }: Pro
   return (
     <div className="w-full max-w-md text-center mx-auto">
       <h1 className="font-display text-5xl font-extrabold mb-2"
-        style={{ color: pct >= 70 ? 'var(--success)' : 'var(--accent-amber)' }}>
+        style={{ color: pct >= 70 ? 'var(--success)' : pct >= 60 ? 'var(--accent-amber)' : 'var(--error)' }}>
         {pct}%
       </h1>
       <p className="text-lg mb-1 font-display font-semibold">{score}/{total} correct</p>

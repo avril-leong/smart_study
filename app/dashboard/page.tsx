@@ -6,7 +6,7 @@ import { Spinner } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
 
 export default function DashboardPage() {
-  const { studySets, subjects, loading, renameSet, deleteSet, assignSubject } = useStudySets()
+  const { studySets, subjects, loading, renameSet, deleteSet, assignSubject, refreshSet } = useStudySets()
 
   const grouped = subjects.map(sub => ({
     subject: sub,
@@ -38,10 +38,10 @@ export default function DashboardPage() {
           {grouped.map(({ subject, sets }) => (
             <SubjectGroup key={subject.id} title={subject.name} color={subject.color}
               studySets={sets} subjects={subjects}
-              onRename={renameSet} onDelete={deleteSet} onAssignSubject={assignSubject} />
+              onRename={renameSet} onDelete={deleteSet} onAssignSubject={assignSubject} onRefresh={refreshSet} />
           ))}
           <SubjectGroup title="Uncategorised" studySets={uncategorised} subjects={subjects}
-            onRename={renameSet} onDelete={deleteSet} onAssignSubject={assignSubject} />
+            onRename={renameSet} onDelete={deleteSet} onAssignSubject={assignSubject} onRefresh={refreshSet} />
         </>
       )}
     </main>

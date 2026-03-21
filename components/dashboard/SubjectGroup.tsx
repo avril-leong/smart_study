@@ -11,9 +11,10 @@ interface Props {
   onRename: (id: string, name: string) => void
   onDelete: (id: string) => void
   onAssignSubject: (id: string, subjectId: string | null) => void
+  onRefresh: (id: string) => void
 }
 
-export function SubjectGroup({ title, color, studySets, subjects, onRename, onDelete, onAssignSubject }: Props) {
+export function SubjectGroup({ title, color, studySets, subjects, onRename, onDelete, onAssignSubject, onRefresh }: Props) {
   const [open, setOpen] = useState(true)
   if (studySets.length === 0) return null
 
@@ -31,7 +32,7 @@ export function SubjectGroup({ title, color, studySets, subjects, onRename, onDe
             <StudySetCard key={s.id} studySet={s} subjects={subjects}
               onRename={name => onRename(s.id, name)}
               onDelete={() => onDelete(s.id)}
-              onRefresh={() => {}}
+              onRefresh={() => onRefresh(s.id)}
               onAssignSubject={subjectId => onAssignSubject(s.id, subjectId)} />
           ))}
         </div>
