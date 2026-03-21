@@ -39,13 +39,13 @@ ${chunk}`
       temperature: 0.7,
     })
     const raw = res.choices[0].message.content ?? '[]'
-    const parsed: any[] = JSON.parse(raw)
+    const parsed = JSON.parse(raw) as Record<string, unknown>[]
     return parsed.map(q => ({
       study_set_id: studySetId,
-      type: q.type,
-      question_text: q.question_text,
-      options: q.options ?? null,
-      correct_answer: q.correct_answer,
+      type: q.type as 'mcq' | 'short_answer',
+      question_text: q.question_text as string,
+      options: (q.options ?? null) as Question['options'],
+      correct_answer: q.correct_answer as string,
     }))
   } catch {
     if (retries > 0) return generateFromChunk(chunk, studySetId, n, retries - 1)

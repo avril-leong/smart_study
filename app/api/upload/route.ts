@@ -24,8 +24,9 @@ export async function POST(request: NextRequest) {
   try {
     const buffer = Buffer.from(await file.arrayBuffer())
     extractedText = await parseFile(buffer, file.type)
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 422 })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Parse error'
+    return NextResponse.json({ error: message }, { status: 422 })
   }
 
   // Generate a study set ID upfront so we can name the storage file

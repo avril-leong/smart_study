@@ -45,8 +45,9 @@ export async function POST(request: NextRequest) {
 
     await service.from('study_sets').update({ generation_status: 'done' }).eq('id', studySetId)
     return NextResponse.json({ ok: true })
-  } catch (err: any) {
+  } catch (err) {
     await service.from('study_sets').update({ generation_status: 'error' }).eq('id', studySetId)
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
