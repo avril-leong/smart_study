@@ -1,0 +1,5 @@
+### Claude files ###
+CLAUDE.md
+.agents/
+.claude/
+skills-lock.json
