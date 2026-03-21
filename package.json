@@ -18,9 +18,9 @@
     "next": "14.2.35",
     "officeparser": "^6.0.4",
     "openai": "^6.32.0",
-    "pdf-parse": "^2.4.5",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "unpdf": "^1.4.0"
   },
   "devDependencies": {
     "@types/node": "^20",

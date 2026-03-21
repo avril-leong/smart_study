@@ -1,11 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverComponentsExternalPackages: ['officeparser', 'pdf-parse'],
+    serverComponentsExternalPackages: ['officeparser', 'unpdf'],
   },
   webpack(config, { isServer }) {
     if (isServer) {
-      config.externals.push('officeparser', 'pdf-parse')
+      config.externals.push('officeparser', 'unpdf')
     }
     return config
   },
