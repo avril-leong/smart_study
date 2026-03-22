@@ -1,17 +1,10 @@
+// components/dashboard/StudySetCard.tsx
 'use client'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/Badge'
 import { ProgressRing } from '@/components/ui/ProgressRing'
 import { RenameInput } from './RenameInput'
 import type { StudySet, Subject } from '@/types'
-
-const FILE_TYPE_LABELS: Record<string, string> = {
-  'application/pdf': 'PDF',
-  'text/plain': 'TXT',
-  'text/markdown': 'MD',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOCX',
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'PPTX',
-}
 
 interface Props {
   studySet: StudySet
@@ -20,13 +13,17 @@ interface Props {
   onDelete: () => void
   onRefresh: () => void
   onAssignSubject: (subjectId: string | null) => void
+  onAddDocument: () => void
 }
 
-export function StudySetCard({ studySet, subjects, onRename, onDelete, onRefresh, onAssignSubject }: Props) {
-  const mastery = 0 // placeholder — mastery % requires performance data
+export function StudySetCard({
+  studySet, subjects, onRename, onDelete, onRefresh, onAssignSubject, onAddDocument
+}: Props) {
+  const mastery = 0
   const lastStudied = studySet.last_studied_at
     ? new Date(studySet.last_studied_at).toLocaleDateString()
     : 'Never'
+  const docCount = studySet.documents.length
 
   return (
     <div className="rounded-xl border p-4 flex items-start gap-4 group"
@@ -35,7 +32,7 @@ export function StudySetCard({ studySet, subjects, onRename, onDelete, onRefresh
       <div className="flex-1 min-w-0">
         <RenameInput value={studySet.name} onSave={onRename} />
         <div className="flex items-center gap-2 mt-1 flex-wrap">
-          <Badge label={studySet.file_type ? (FILE_TYPE_LABELS[studySet.file_type] ?? studySet.file_type) : 'Unknown'} />
+          <Badge label={`${docCount} ${docCount === 1 ? 'doc' : 'docs'}`} />
           <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
             {studySet.question_count} questions · Last studied {lastStudied}
           </span>
@@ -61,6 +58,12 @@ export function StudySetCard({ studySet, subjects, onRename, onDelete, onRefresh
         )}
         {studySet.generation_status === 'processing' && (
           <span className="text-xs" style={{ color: 'var(--accent-amber)' }}>Generating…</span>
+        )}
+        {studySet.generation_status !== 'processing' && (
+          <button onClick={onAddDocument} className="px-3 py-1 rounded-lg text-xs"
+            style={{ color: 'var(--accent-cyan)', border: '1px solid var(--accent-cyan)' }}>
+            + Doc
+          </button>
         )}
         <button onClick={onRefresh} className="px-3 py-1 rounded-lg text-xs"
           style={{ color: 'var(--text-muted)', border: '1px solid var(--bg-border)' }}>
