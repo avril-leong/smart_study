@@ -52,6 +52,12 @@ export async function PATCH(
     updates.question_count_pref = questionCountPref
   }
 
+  if ('focusLessonContent' in body) {
+    if (typeof body.focusLessonContent !== 'boolean')
+      return NextResponse.json({ error: 'focusLessonContent must be a boolean' }, { status: 400 })
+    updates.focus_lesson_content = body.focusLessonContent
+  }
+
   if (Object.keys(updates).length === 0)
     return NextResponse.json({ ok: true })
 
