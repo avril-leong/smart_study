@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { parseFile, SUPPORTED_TYPES } from '@/lib/parsers/index'
+import { sanitizePrompt } from '@/lib/sanitize'
 
 const MAX_SIZE = 50 * 1024 * 1024
 
@@ -14,6 +15,15 @@ export async function POST(request: NextRequest) {
   const name = formData.get('name') as string | null
   const subjectId = formData.get('subjectId') as string | null
   const existingStudySetId = formData.get('studySetId') as string | null
+  const rawCustomPrompt = formData.get('customPrompt') as string | null
+  let customPromptSanitized: string | null = null
+  if (rawCustomPrompt?.trim()) {
+    try {
+      customPromptSanitized = sanitizePrompt(rawCustomPrompt, 500)
+    } catch {
+      return NextResponse.json({ error: 'Prompt contains disallowed content' }, { status: 400 })
+    }
+  }
 
   if (!file) return NextResponse.json({ error: 'Missing file' }, { status: 400 })
   if (file.size > MAX_SIZE) return NextResponse.json({ error: 'File too large (max 50MB)' }, { status: 400 })
@@ -83,6 +93,7 @@ export async function POST(request: NextRequest) {
     file_type: null,
     extracted_text_path: null,
     generation_status: 'pending',
+    custom_prompt: customPromptSanitized,
   })
   if (setError) return NextResponse.json({ error: 'Database insert failed' }, { status: 500 })
 

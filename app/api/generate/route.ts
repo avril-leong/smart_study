@@ -1,48 +1,46 @@
+// app/api/generate/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { generateQuestions } from '@/lib/ai/generate-questions'
+import { getUserAIConfig } from '@/lib/ai/get-user-ai-config'
+import { sanitizePrompt } from '@/lib/sanitize'
 
 export async function POST(request: NextRequest) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { studySetId, mode = 'regenerate', documentIds } = await request.json()
+  const { studySetId, mode = 'regenerate', documentIds, customPrompt: bodyCustomPrompt } = await request.json()
   if (!studySetId) return NextResponse.json({ error: 'Missing studySetId' }, { status: 400 })
 
   if (mode !== 'append' && mode !== 'regenerate') {
     return NextResponse.json({ error: 'mode must be "append" or "regenerate"' }, { status: 400 })
   }
 
-  // Validate append-mode requirement
   if (mode === 'append' && (!documentIds || documentIds.length === 0)) {
     return NextResponse.json({ error: 'documentIds required for append mode' }, { status: 400 })
   }
 
   const service = createServiceRoleClient()
 
-  // Verify ownership
+  // Verify ownership — also fetch custom_prompt
   const { data: studySet } = await service.from('study_sets')
-    .select('id, user_id, generation_status')
+    .select('id, user_id, generation_status, custom_prompt')
     .eq('id', studySetId).single()
 
   if (!studySet || studySet.user_id !== user.id)
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  // Only short-circuit if already processing (prevent concurrent runs)
   if (studySet.generation_status === 'processing')
     return NextResponse.json({ ok: true, message: 'Already processing' })
 
-  // Delete existing questions for regenerate mode
   if (mode === 'regenerate') {
     await service.from('questions').delete().eq('study_set_id', studySetId)
   }
 
-  // Mark processing
   await service.from('study_sets').update({ generation_status: 'processing' }).eq('id', studySetId)
 
   try {
-    // Fetch documents
     let docsQuery = service.from('study_set_documents')
       .select('extracted_text_path')
       .eq('study_set_id', studySetId)
@@ -57,7 +55,6 @@ export async function POST(request: NextRequest) {
       throw new Error('No documents found for this study set')
     }
 
-    // Download and concatenate all document texts
     const texts: string[] = []
     for (const doc of docs) {
       const { data: fileData, error: dlError } = await service.storage
@@ -67,8 +64,14 @@ export async function POST(request: NextRequest) {
     }
     const combinedText = texts.join('\n\n---\n\n')
 
-    // Generate questions
-    const questions = await generateQuestions(combinedText, studySetId)
+    // Resolve AI config (BYOK or server fallback)
+    const aiConfig = await getUserAIConfig(user.id, service)
+
+    // Resolve effective custom prompt: body override > set > global > none
+    const rawCustomPrompt = bodyCustomPrompt ?? studySet.custom_prompt ?? aiConfig.globalCustomPrompt ?? null
+    const customPrompt = rawCustomPrompt ? sanitizePrompt(rawCustomPrompt, 500) : undefined
+
+    const questions = await generateQuestions(combinedText, studySetId, aiConfig, customPrompt)
 
     if (questions.length > 0) {
       const { error: insertError } = await service.from('questions').insert(questions)
@@ -80,6 +83,14 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     await service.from('study_sets').update({ generation_status: 'error' }).eq('id', studySetId)
     const message = err instanceof Error ? err.message : 'Unknown error'
+    // 502 if AI provider rejected the key
+    const isProviderRejection = message.toLowerCase().includes('401') || message.toLowerCase().includes('403')
+    if (isProviderRejection) {
+      return NextResponse.json(
+        { error: 'AI provider rejected the API key. Check your key in Settings.' },
+        { status: 502 }
+      )
+    }
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }

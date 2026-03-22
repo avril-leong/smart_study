@@ -1,6 +1,5 @@
 import { chunkText } from './chunk-text'
 import { createAIClient } from './create-ai-client'
-import { DEFAULT_BASE_PROMPT } from './constants'
 import type { Question, AIConfig } from '@/types'
 
 const SYSTEM_PROMPT = `You are a study assistant that generates quiz questions from educational text.
