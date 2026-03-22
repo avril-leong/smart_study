@@ -79,7 +79,7 @@ export async function generateQuestions(
   aiConfig: AIConfig,
   customPrompt?: string,
   questionCount = 25,
-  focusLessonContent = false
+  focusLessonContent = true
 ): Promise<Omit<Question, 'id' | 'created_at'>[]> {
   const cappedText = text.slice(0, MAX_INPUT_CHARS)
   return generateFromChunk(cappedText, studySetId, questionCount, aiConfig, customPrompt, focusLessonContent)

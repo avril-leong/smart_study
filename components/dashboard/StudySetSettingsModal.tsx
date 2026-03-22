@@ -26,7 +26,7 @@ export function StudySetSettingsModal({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const [focusLessonContent, setFocusLessonContent] = useState(studySet.focus_lesson_content ?? false)
+  const [focusLessonContent, setFocusLessonContent] = useState(studySet.focus_lesson_content ?? true)
 
   async function save() {
     if (!name.trim()) return

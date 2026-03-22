@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     const customPrompt = rawCustomPrompt ? sanitizePrompt(rawCustomPrompt, 500) : undefined
 
     const questionCount = (studySet as { question_count_pref?: number | null }).question_count_pref ?? 25
-    const focusLessonContent = (studySet as { focus_lesson_content?: boolean | null }).focus_lesson_content ?? false
+    const focusLessonContent = (studySet as { focus_lesson_content?: boolean | null }).focus_lesson_content ?? true
     const questions = await generateQuestions(combinedText, studySetId, aiConfig, customPrompt, questionCount, focusLessonContent)
 
     if (questions.length > 0) {
