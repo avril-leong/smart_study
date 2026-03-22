@@ -46,6 +46,7 @@ export interface StudySet {
   documents: StudySetDocument[]       // always populated by useStudySets
   custom_prompt?: string | null       // per-set instruction; NULL = use global default
   question_count_pref?: number | null // 10 | 25 | 50; NULL = use default (25)
+  focus_lesson_content?: boolean      // filter out administrative/non-lesson content during generation
   mastery?: number                    // 0–100, computed: correctly-answered-once / total
 }
 
