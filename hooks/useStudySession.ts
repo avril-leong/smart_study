@@ -15,7 +15,7 @@ interface SessionState {
   done: boolean
 }
 
-export function useStudySession(studySetId: string) {
+export function useStudySession(studySetId: string, practice = false) {
   const [state, setState] = useState<SessionState>({
     question: null, answered: false, givenAnswer: '', isCorrect: false,
     feedback: '', feedbackLoading: false, score: 0, total: 0, done: false,
@@ -23,7 +23,7 @@ export function useStudySession(studySetId: string) {
   const questionRef = useRef<Question | null>(null)
 
   const fetchNext = useCallback(async () => {
-    const res = await fetch(`/api/session/next?studySetId=${studySetId}`)
+    const res = await fetch(`/api/session/next?studySetId=${studySetId}${practice ? '&practice=true' : ''}`)
     const data = await res.json()
     if (data.done) {
       setState(s => ({ ...s, done: true }))
@@ -31,7 +31,7 @@ export function useStudySession(studySetId: string) {
       questionRef.current = data.question
       setState(s => ({ ...s, question: data.question, answered: false, givenAnswer: '', feedback: '', isCorrect: false }))
     }
-  }, [studySetId])
+  }, [studySetId, practice])  // eslint-disable-line
 
   const submitAnswer = useCallback(async (answer: string) => {
     const question = questionRef.current

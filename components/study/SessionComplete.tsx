@@ -34,6 +34,7 @@ export function SessionComplete({ studySetId, score, total, weakQuestions }: Pro
       )}
       <div className="flex flex-col gap-3">
         <Link href={`/study/${studySetId}`}><Button className="w-full">Study Again</Button></Link>
+        <Link href={`/study/${studySetId}?practice=true`}><Button variant="ghost" className="w-full">Keep Practising</Button></Link>
         <Link href="/dashboard"><Button variant="ghost" className="w-full">Back to Dashboard</Button></Link>
       </div>
     </div>

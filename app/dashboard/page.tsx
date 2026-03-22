@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useStudySets } from '@/hooks/useStudySets'
 import { SubjectGroup } from '@/components/dashboard/SubjectGroup'
 import { AddDocumentModal } from '@/components/dashboard/AddDocumentModal'
-import { EditPromptModal } from '@/components/dashboard/EditPromptModal'
+import { StudySetSettingsModal } from '@/components/dashboard/StudySetSettingsModal'
 import { Spinner } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
 import type { StudySet } from '@/types'
@@ -13,11 +13,11 @@ import type { StudySet } from '@/types'
 export default function DashboardPage() {
   const {
     studySets, subjects, loading,
-    renameSet, deleteSet, assignSubject, refreshSet, updateSetStatus, refresh,
+    deleteSet, refreshSet, updateSetStatus, refresh,
   } = useStudySets()
 
+  const [settingsTarget, setSettingsTarget] = useState<StudySet | null>(null)
   const [addDocTarget, setAddDocTarget] = useState<StudySet | null>(null)
-  const [editPromptTarget, setEditPromptTarget] = useState<StudySet | null>(null)
   const [globalCustomPrompt, setGlobalCustomPrompt] = useState('')
 
   useEffect(() => {
@@ -32,14 +32,9 @@ export default function DashboardPage() {
   }))
   const uncategorised = studySets.filter(s => !s.subject_id)
 
-  function handleAddDocument(id: string) {
+  function handleOpenSettings(id: string) {
     const set = studySets.find(s => s.id === id)
-    if (set) setAddDocTarget(set)
-  }
-
-  function handleEditPrompt(id: string) {
-    const set = studySets.find(s => s.id === id)
-    if (set) setEditPromptTarget(set)
+    if (set) setSettingsTarget(set)
   }
 
   return (
@@ -66,15 +61,37 @@ export default function DashboardPage() {
           {grouped.map(({ subject, sets }) => (
             <SubjectGroup key={subject.id} title={subject.name} color={subject.color}
               studySets={sets} subjects={subjects}
-              onRename={renameSet} onDelete={deleteSet}
-              onAssignSubject={assignSubject} onRefresh={refreshSet}
-              onAddDocument={handleAddDocument} onEditPrompt={handleEditPrompt} />
+              onOpenSettings={handleOpenSettings} />
           ))}
           <SubjectGroup title="Uncategorised" studySets={uncategorised} subjects={subjects}
-            onRename={renameSet} onDelete={deleteSet}
-            onAssignSubject={assignSubject} onRefresh={refreshSet}
-            onAddDocument={handleAddDocument} onEditPrompt={handleEditPrompt} />
+            onOpenSettings={handleOpenSettings} />
         </>
+      )}
+
+      {settingsTarget && (
+        <StudySetSettingsModal
+          studySet={settingsTarget}
+          subjects={subjects}
+          globalCustomPrompt={globalCustomPrompt}
+          onClose={() => setSettingsTarget(null)}
+          onSaved={updated => {
+            refresh()
+            setSettingsTarget(null)
+          }}
+          onDelete={() => {
+            deleteSet(settingsTarget.id)
+            setSettingsTarget(null)
+          }}
+          onRefresh={() => {
+            refreshSet(settingsTarget.id)
+            setSettingsTarget(null)
+          }}
+          onAddDocument={() => {
+            const target = settingsTarget
+            setSettingsTarget(null)
+            setAddDocTarget(target)
+          }}
+        />
       )}
 
       {addDocTarget && (
@@ -82,14 +99,6 @@ export default function DashboardPage() {
           studySet={addDocTarget}
           onClose={() => { setAddDocTarget(null); refresh() }}
           onStatusChange={updateSetStatus}
-        />
-      )}
-
-      {editPromptTarget && (
-        <EditPromptModal
-          studySet={editPromptTarget}
-          globalCustomPrompt={globalCustomPrompt}
-          onClose={() => { setEditPromptTarget(null); refresh() }}
         />
       )}
     </main>

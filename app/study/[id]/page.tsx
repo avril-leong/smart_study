@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { useStudySession } from '@/hooks/useStudySession'
 import { QuestionCard } from '@/components/study/QuestionCard'
 import { FeedbackPanel } from '@/components/study/FeedbackPanel'
@@ -11,7 +11,9 @@ import { createClient } from '@/lib/supabase/client'
 export default function StudyPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
-  const session = useStudySession(id)
+  const searchParams = useSearchParams()
+  const practice = searchParams.get('practice') === 'true'
+  const session = useStudySession(id, practice)
   const [totalQuestions, setTotalQuestions] = useState(0)
   const [studySetName, setStudySetName] = useState('Study Session')
 

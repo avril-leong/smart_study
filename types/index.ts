@@ -45,6 +45,7 @@ export interface StudySet {
   subject?: Subject | null
   documents: StudySetDocument[]       // always populated by useStudySets
   custom_prompt?: string | null       // per-set instruction; NULL = use global default
+  question_count_pref?: number | null // 10 | 25 | 50; NULL = use default (25)
 }
 
 export interface MCQOption {

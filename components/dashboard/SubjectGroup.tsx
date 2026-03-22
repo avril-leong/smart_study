@@ -8,18 +8,10 @@ interface Props {
   color?: string
   studySets: StudySet[]
   subjects: Subject[]
-  onRename: (id: string, name: string) => void
-  onDelete: (id: string) => void
-  onAssignSubject: (id: string, subjectId: string | null) => void
-  onRefresh: (id: string) => void
-  onAddDocument: (id: string) => void
-  onEditPrompt: (id: string) => void
+  onOpenSettings: (id: string) => void
 }
 
-export function SubjectGroup({
-  title, color, studySets, subjects,
-  onRename, onDelete, onAssignSubject, onRefresh, onAddDocument, onEditPrompt
-}: Props) {
+export function SubjectGroup({ title, color, studySets, subjects, onOpenSettings }: Props) {
   const [open, setOpen] = useState(true)
   if (studySets.length === 0) return null
 
@@ -34,13 +26,12 @@ export function SubjectGroup({
       {open && (
         <div className="space-y-3">
           {studySets.map(s => (
-            <StudySetCard key={s.id} studySet={s} subjects={subjects}
-              onRename={name => onRename(s.id, name)}
-              onDelete={() => onDelete(s.id)}
-              onRefresh={() => onRefresh(s.id)}
-              onAssignSubject={subjectId => onAssignSubject(s.id, subjectId)}
-              onAddDocument={() => onAddDocument(s.id)}
-              onEditPrompt={() => onEditPrompt(s.id)} />
+            <StudySetCard
+              key={s.id}
+              studySet={s}
+              subjects={subjects}
+              onOpenSettings={() => onOpenSettings(s.id)}
+            />
           ))}
         </div>
       )}

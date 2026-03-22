@@ -1,4 +1,4 @@
-import { chunkText } from './chunk-text'
+import { MAX_INPUT_CHARS } from './chunk-text'
 import { createAIClient } from './create-ai-client'
 import type { Question, AIConfig } from '@/types'
 
@@ -64,14 +64,9 @@ export async function generateQuestions(
   text: string,
   studySetId: string,
   aiConfig: AIConfig,
-  customPrompt?: string
+  customPrompt?: string,
+  questionCount = 25
 ): Promise<Omit<Question, 'id' | 'created_at'>[]> {
-  const chunks = chunkText(text)
-  const all: Omit<Question, 'id' | 'created_at'>[] = []
-  for (const chunk of chunks) {
-    const n = Math.max(5, Math.round(10 * (chunk.length / 3000)))
-    const questions = await generateFromChunk(chunk, studySetId, n, aiConfig, customPrompt)
-    all.push(...questions)
-  }
-  return all
+  const cappedText = text.slice(0, MAX_INPUT_CHARS)
+  return generateFromChunk(cappedText, studySetId, questionCount, aiConfig, customPrompt)
 }
