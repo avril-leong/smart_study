@@ -1,6 +1,16 @@
 export type GenerationStatus = 'pending' | 'processing' | 'done' | 'error'
 export type QuestionType = 'mcq' | 'short_answer'
 
+export type AIProvider = 'openai' | 'deepseek' | 'openrouter'
+
+export interface AIConfig {
+  provider: AIProvider
+  apiKey: string        // decrypted, server-side only — never returned to client
+  model: string         // resolved: user value or provider default if empty
+  basePrompt: string    // resolved: user value or DEFAULT_BASE_PROMPT if null
+  globalCustomPrompt: string | null
+}
+
 export interface Subject {
   id: string
   user_id: string
@@ -34,6 +44,7 @@ export interface StudySet {
   question_count?: number
   subject?: Subject | null
   documents: StudySetDocument[]       // always populated by useStudySets
+  custom_prompt?: string | null       // per-set instruction; NULL = use global default
 }
 
 export interface MCQOption {
