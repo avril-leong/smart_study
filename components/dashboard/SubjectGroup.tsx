@@ -12,9 +12,13 @@ interface Props {
   onDelete: (id: string) => void
   onAssignSubject: (id: string, subjectId: string | null) => void
   onRefresh: (id: string) => void
+  onAddDocument: (id: string) => void
 }
 
-export function SubjectGroup({ title, color, studySets, subjects, onRename, onDelete, onAssignSubject, onRefresh }: Props) {
+export function SubjectGroup({
+  title, color, studySets, subjects,
+  onRename, onDelete, onAssignSubject, onRefresh, onAddDocument
+}: Props) {
   const [open, setOpen] = useState(true)
   if (studySets.length === 0) return null
 
@@ -33,7 +37,8 @@ export function SubjectGroup({ title, color, studySets, subjects, onRename, onDe
               onRename={name => onRename(s.id, name)}
               onDelete={() => onDelete(s.id)}
               onRefresh={() => onRefresh(s.id)}
-              onAssignSubject={subjectId => onAssignSubject(s.id, subjectId)} />
+              onAssignSubject={subjectId => onAssignSubject(s.id, subjectId)}
+              onAddDocument={() => onAddDocument(s.id)} />
           ))}
         </div>
       )}
