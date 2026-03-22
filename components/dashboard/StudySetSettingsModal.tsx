@@ -26,6 +26,7 @@ export function StudySetSettingsModal({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [focusLessonContent, setFocusLessonContent] = useState(studySet.focus_lesson_content ?? false)
 
   async function save() {
     if (!name.trim()) return
@@ -39,6 +40,7 @@ export function StudySetSettingsModal({
         subjectId: subjectId || null,
         customPrompt: prompt.trim() || null,
         questionCountPref: questionCount,
+        focusLessonContent,
       }),
     })
     if (!res.ok) {
@@ -50,6 +52,7 @@ export function StudySetSettingsModal({
         subject_id: subjectId || null,
         custom_prompt: prompt.trim() || null,
         question_count_pref: questionCount,
+        focus_lesson_content: focusLessonContent,
       })
     }
     setSaving(false)
@@ -156,6 +159,36 @@ export function StudySetSettingsModal({
                 </button>
               )}
             </div>
+          </div>
+
+          {/* Focus lesson content */}
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                Focus on lesson content only
+              </label>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={focusLessonContent}
+                onClick={() => setFocusLessonContent(v => !v)}
+                className="relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors"
+                style={{
+                  background: focusLessonContent ? 'var(--accent-cyan)' : 'var(--bg-border)',
+                }}
+              >
+                <span
+                  className="inline-block h-5 w-5 rounded-full transition-transform"
+                  style={{
+                    background: 'var(--text-primary)',
+                    transform: focusLessonContent ? 'translate(21px, 2px)' : 'translate(2px, 2px)',
+                  }}
+                />
+              </button>
+            </div>
+            <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>
+              The AI will attempt to skip administrative content such as deadlines and course schedules. Results may not be perfect.
+            </p>
           </div>
 
           {/* Question count */}
