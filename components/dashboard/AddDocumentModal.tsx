@@ -76,20 +76,56 @@ export function AddDocumentModal({ studySet, onClose, onStatusChange }: Props) {
       const fileKey = file.name + file.size
       if (newKeys[fileKey]) continue  // already uploaded in a previous attempt
 
-      const fd = new FormData()
-      fd.append('file', file)
-      fd.append('studySetId', studySet.id)
-
-      const res = await window.fetch('/api/upload', { method: 'POST', body: fd })
-      if (!res.ok) {
-        const text = await res.text()
+      // Step A: sign
+      const signRes = await window.fetch('/api/upload/sign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileType: file.type, fileSize: file.size, studySetId: studySet.id }),
+      })
+      if (!signRes.ok) {
+        const text = await signRes.text()
         let msg = 'Upload failed for ' + file.name
         try { msg = JSON.parse(text).error ?? msg } catch {}
         setError(msg + '. Fix and try again.')
         setUploading(false)
         return
       }
-      const { documentId } = await res.json()
+      const sign = await signRes.json()
+
+      // Step B: direct upload to Supabase Storage
+      const putRes = await window.fetch(sign.signedUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type },
+      })
+      if (!putRes.ok) {
+        setError(`Storage upload failed for ${file.name}. Fix and try again.`)
+        setUploading(false)
+        return
+      }
+
+      // Step C: process
+      const procRes = await window.fetch('/api/upload/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rawStoragePath: sign.rawStoragePath,
+          fileName: file.name,
+          fileType: file.type,
+          studySetId: studySet.id,
+          documentId: sign.documentId,
+          isNewStudySet: false,
+        }),
+      })
+      if (!procRes.ok) {
+        const text = await procRes.text()
+        let msg = 'Upload failed for ' + file.name
+        try { msg = JSON.parse(text).error ?? msg } catch {}
+        setError(msg + '. Fix and try again.')
+        setUploading(false)
+        return
+      }
+      const { documentId } = await procRes.json()
       newKeys[fileKey] = documentId
       setUploadedKeys({ ...newKeys })
     }
