@@ -51,7 +51,7 @@ export function StudySetCard({ studySet, onOpenSettings }: Props) {
         {studySet.generation_status === 'processing' && (
           <p className="text-xs mt-1 flex items-center gap-1.5" style={{ color: 'var(--accent-amber)' }}>
             <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--accent-amber)' }} />
-            Generating{studySet.question_count > 0 ? ` · ${studySet.question_count} so far` : '…'}
+            Generating{(studySet.question_count ?? 0) > 0 ? ` · ${studySet.question_count} so far` : '…'}
           </p>
         )}
 
