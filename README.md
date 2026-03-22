@@ -2,6 +2,14 @@
 
 An AI-powered study app that turns your lecture notes and PDFs into personalised quiz sessions. Upload your documents, let AI generate questions, then study with spaced repetition — so you focus on what you haven't mastered yet.
 
+![Next.js](https://img.shields.io/badge/Next.js_14-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)
+![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)
+![Vitest](https://img.shields.io/badge/Vitest-6E9F18?style=for-the-badge&logo=vitest&logoColor=white)
+![License: MIT](https://img.shields.io/badge/License-MIT-38bdf8?style=for-the-badge)
+
 > **Note:** This project was built to test the [Claude Code Superpowers](https://github.com/anthropics/claude-code) skill — an agentic workflow plugin for Claude Code that enables brainstorming, spec writing, plan writing, and subagent-driven development. The entire codebase was designed and implemented through that workflow.
 
 ---
@@ -39,14 +47,14 @@ An AI-powered study app that turns your lecture notes and PDFs into personalised
 
 | Layer | Technology |
 |---|---|
-| Framework | [Next.js 14](https://nextjs.org/) (App Router) |
-| Language | TypeScript |
-| Database & Auth | [Supabase](https://supabase.com/) (Postgres + RLS + Storage) |
-| AI | OpenAI-compatible SDK — DeepSeek / OpenAI / OpenRouter |
-| Styling | Tailwind CSS |
-| Animations | Framer Motion |
-| Testing | Vitest |
-| Deployment | Vercel |
+| Framework | ![Next.js](https://img.shields.io/badge/Next.js_14-000000?style=flat-square&logo=nextdotjs&logoColor=white) App Router |
+| Language | ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white) |
+| Database & Auth | ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat-square&logo=supabase&logoColor=white) Postgres + RLS + Storage |
+| AI | ![OpenAI](https://img.shields.io/badge/OpenAI--compatible-412991?style=flat-square&logo=openai&logoColor=white) DeepSeek / OpenAI / OpenRouter |
+| Styling | ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white) |
+| Animations | ![Framer Motion](https://img.shields.io/badge/Framer_Motion-0055FF?style=flat-square&logo=framer&logoColor=white) |
+| Testing | ![Vitest](https://img.shields.io/badge/Vitest-6E9F18?style=flat-square&logo=vitest&logoColor=white) |
+| Deployment | ![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat-square&logo=vercel&logoColor=white) |
 
 ---
 
