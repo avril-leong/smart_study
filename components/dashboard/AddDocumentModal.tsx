@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { DropZone } from '@/components/upload/DropZone'
 import { Button } from '@/components/ui/Button'
-import type { StudySet, GenerationStatus } from '@/types'
+import type { StudySet, StudySetDocument, GenerationStatus } from '@/types'
 
 interface Props {
   studySet: StudySet
@@ -16,6 +16,8 @@ function formatDate(iso: string) {
 }
 
 export function AddDocumentModal({ studySet, onClose, onStatusChange }: Props) {
+  const [docs, setDocs] = useState<StudySetDocument[]>(studySet.documents)
+  const [removingId, setRemovingId] = useState<string | null>(null)
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [uploadedKeys, setUploadedKeys] = useState<Record<string, string>>({}) // fileKey -> documentId
   const [mode, setMode] = useState<'append' | 'regenerate'>('append')
@@ -33,6 +35,19 @@ export function AddDocumentModal({ studySet, onClose, onStatusChange }: Props) {
         setHasKey(d.hasKey ?? false)
       })
   }, [])
+
+  async function removeDoc(docId: string) {
+    setRemovingId(docId)
+    setError('')
+    const res = await window.fetch(`/api/study-sets/${studySet.id}/documents/${docId}`, { method: 'DELETE' })
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      setError(d.error ?? 'Failed to remove document')
+    } else {
+      setDocs(prev => prev.filter(d => d.id !== docId))
+    }
+    setRemovingId(null)
+  }
 
   function addPending(incoming: File[]) {
     setPendingFiles(prev => {
@@ -111,18 +126,25 @@ export function AddDocumentModal({ studySet, onClose, onStatusChange }: Props) {
         <h2 className="font-display text-xl font-bold mb-4">Add Document</h2>
 
         {/* Section 1: existing documents */}
-        {studySet.documents.length > 0 && (
+        {docs.length > 0 && (
           <div className="mb-4">
             <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>
               EXISTING DOCUMENTS
             </p>
             <ul className="space-y-1">
-              {studySet.documents.map(doc => (
-                <li key={doc.id} className="flex items-center justify-between text-sm">
-                  <span>{doc.file_name}</span>
-                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              {docs.map(doc => (
+                <li key={doc.id} className="flex items-center justify-between text-sm gap-2">
+                  <span className="truncate flex-1">{doc.file_name}</span>
+                  <span className="text-xs flex-shrink-0" style={{ color: 'var(--text-muted)' }}>
                     {formatDate(doc.uploaded_at)}
                   </span>
+                  <button
+                    onClick={() => removeDoc(doc.id)}
+                    disabled={!!removingId || uploading}
+                    className="text-xs flex-shrink-0 ml-1"
+                    style={{ color: 'var(--error)', opacity: (removingId || uploading) ? 0.4 : 1 }}>
+                    {removingId === doc.id ? '…' : 'Remove'}
+                  </button>
                 </li>
               ))}
             </ul>
