@@ -74,7 +74,7 @@ export default function DashboardPage() {
           subjects={subjects}
           globalCustomPrompt={globalCustomPrompt}
           onClose={() => setSettingsTarget(null)}
-          onSaved={updated => {
+          onSaved={() => {
             refresh()
             setSettingsTarget(null)
           }}
