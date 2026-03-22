@@ -164,10 +164,11 @@ export function StudySetSettingsModal({
           {/* Focus lesson content */}
           <div>
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+              <label htmlFor="focus-lesson-content-switch" className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                 Focus on lesson content only
               </label>
               <button
+                id="focus-lesson-content-switch"
                 type="button"
                 role="switch"
                 aria-checked={focusLessonContent}
