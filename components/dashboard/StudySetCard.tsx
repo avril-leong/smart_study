@@ -35,7 +35,7 @@ export function StudySetCard({ studySet, subjects, onRename, onDelete, onRefresh
       <div className="flex-1 min-w-0">
         <RenameInput value={studySet.name} onSave={onRename} />
         <div className="flex items-center gap-2 mt-1 flex-wrap">
-          <Badge label={FILE_TYPE_LABELS[studySet.file_type] ?? studySet.file_type} />
+          <Badge label={studySet.file_type ? (FILE_TYPE_LABELS[studySet.file_type] ?? studySet.file_type) : 'Unknown'} />
           <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
             {studySet.question_count} questions · Last studied {lastStudied}
           </span>
