@@ -49,7 +49,10 @@ export default function SettingsPage() {
   async function createSubject(e: React.FormEvent) {
     e.preventDefault()
     if (!newName.trim()) return
-    await createClient().from('subjects').insert({ name: newName.trim(), color: newColor })
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    await supabase.from('subjects').insert({ name: newName.trim(), color: newColor, user_id: user.id })
     setNewName(''); setNewColor('#00c9ff'); load()
   }
 
