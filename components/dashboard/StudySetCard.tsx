@@ -14,10 +14,11 @@ interface Props {
   onRefresh: () => void
   onAssignSubject: (subjectId: string | null) => void
   onAddDocument: () => void
+  onEditPrompt: () => void
 }
 
 export function StudySetCard({
-  studySet, subjects, onRename, onDelete, onRefresh, onAssignSubject, onAddDocument
+  studySet, subjects, onRename, onDelete, onRefresh, onAssignSubject, onAddDocument, onEditPrompt
 }: Props) {
   const mastery = 0
   const lastStudied = studySet.last_studied_at
@@ -65,6 +66,10 @@ export function StudySetCard({
             + Doc
           </button>
         )}
+        <button onClick={onEditPrompt} className="px-3 py-1 rounded-lg text-xs"
+          style={{ color: 'var(--text-muted)', border: '1px solid var(--bg-border)' }}>
+          Edit prompt
+        </button>
         <button onClick={onRefresh} className="px-3 py-1 rounded-lg text-xs"
           style={{ color: 'var(--text-muted)', border: '1px solid var(--bg-border)' }}>
           Refresh

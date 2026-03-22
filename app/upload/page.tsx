@@ -20,6 +20,8 @@ export default function UploadPage() {
   const [stage, setStage] = useState<Stage>('idle')
   const [error, setError] = useState('')
   const [questionCount, setQuestionCount] = useState(0)
+  const [customPrompt, setCustomPrompt] = useState('')
+  const [globalCustomPrompt, setGlobalCustomPrompt] = useState('')
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -29,6 +31,13 @@ export default function UploadPage() {
   useEffect(() => {
     createClient().from('subjects').select('*').order('name')
       .then(({ data }) => { if (data) setSubjects(data) })
+    window.fetch('/api/settings/ai')
+      .then(r => r.json())
+      .then(d => {
+        const g = d.globalCustomPrompt ?? ''
+        setGlobalCustomPrompt(g)
+        setCustomPrompt(g)
+      })
   }, [])
 
   function addFiles(incoming: File[]) {
@@ -57,6 +66,7 @@ export default function UploadPage() {
     fd0.append('file', files[0])
     fd0.append('name', name)
     if (subjectId) fd0.append('subjectId', subjectId)
+    if (customPrompt.trim()) fd0.append('customPrompt', customPrompt.trim())
 
     const firstRes = await window.fetch('/api/upload', { method: 'POST', body: fd0 })
     if (!firstRes.ok) {
@@ -179,6 +189,30 @@ export default function UploadPage() {
                   placeholder="e.g. Chapter 4 Notes" required />
               </div>
               <SubjectSelector subjects={subjects} value={subjectId} onChange={setSubjectId} />
+              <div>
+                <label className="block text-sm font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>
+                  Custom instructions <span className="font-normal">(optional)</span>
+                </label>
+                <textarea
+                  value={customPrompt}
+                  onChange={e => setCustomPrompt(e.target.value)}
+                  rows={3}
+                  maxLength={500}
+                  placeholder={globalCustomPrompt || "e.g. 'Focus on key dates and figures', 'Generate harder application questions'"}
+                  disabled={stage === 'uploading'}
+                  className="w-full rounded-lg px-3 py-2 text-sm resize-y"
+                  style={{
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--bg-border)',
+                    color: 'var(--text-primary)',
+                    fontFamily: 'inherit',
+                    opacity: stage === 'uploading' ? 0.5 : 1,
+                  }}
+                />
+                <span className="block text-xs mt-1 text-right" style={{ color: 'var(--text-muted)' }}>
+                  {customPrompt.length} / 500
+                </span>
+              </div>
               {error && <p className="text-sm" style={{ color: 'var(--error)' }}>{error}</p>}
               <Button type="submit"
                 disabled={stage === 'uploading' || files.length === 0 || !name.trim()}

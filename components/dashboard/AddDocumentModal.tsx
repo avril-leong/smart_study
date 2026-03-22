@@ -1,6 +1,6 @@
 // components/dashboard/AddDocumentModal.tsx
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { DropZone } from '@/components/upload/DropZone'
 import { Button } from '@/components/ui/Button'
 import type { StudySet, GenerationStatus } from '@/types'
@@ -21,6 +21,14 @@ export function AddDocumentModal({ studySet, onClose, onStatusChange }: Props) {
   const [mode, setMode] = useState<'append' | 'regenerate'>('append')
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
+  const [customPrompt, setCustomPrompt] = useState(studySet.custom_prompt ?? '')
+  const [globalCustomPrompt, setGlobalCustomPrompt] = useState('')
+
+  useEffect(() => {
+    window.fetch('/api/settings/ai')
+      .then(r => r.json())
+      .then(d => { setGlobalCustomPrompt(d.globalCustomPrompt ?? '') })
+  }, [])
 
   function addPending(incoming: File[]) {
     setPendingFiles(prev => {
@@ -65,7 +73,7 @@ export function AddDocumentModal({ studySet, onClose, onStatusChange }: Props) {
 
     // All uploads succeeded — trigger generation
     const allDocIds = Object.values(newKeys)
-    const body: Record<string, unknown> = { studySetId: studySet.id, mode }
+    const body: Record<string, unknown> = { studySetId: studySet.id, mode, customPrompt: customPrompt.trim() || null }
     if (mode === 'append') body.documentIds = allDocIds
 
     const genRes = await window.fetch('/api/generate', {
@@ -149,6 +157,28 @@ export function AddDocumentModal({ studySet, onClose, onStatusChange }: Props) {
                 checked={mode === 'regenerate'} onChange={() => setMode('regenerate')} className="mt-0.5" />
               <span className="text-sm">Delete all questions and regenerate from all documents</span>
             </label>
+            <div className="mt-4">
+              <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>
+                Custom instructions <span className="font-normal">(optional)</span>
+              </label>
+              <textarea
+                value={customPrompt}
+                onChange={e => setCustomPrompt(e.target.value)}
+                rows={2}
+                maxLength={500}
+                placeholder={globalCustomPrompt || "e.g. Focus on key concepts"}
+                className="w-full rounded-lg px-3 py-2 text-sm resize-y"
+                style={{
+                  background: 'var(--bg-base)',
+                  border: '1px solid var(--bg-border)',
+                  color: 'var(--text-primary)',
+                  fontFamily: 'inherit',
+                }}
+              />
+              <span className="block text-xs mt-1 text-right" style={{ color: 'var(--text-muted)' }}>
+                {customPrompt.length} / 500
+              </span>
+            </div>
           </div>
         )}
 
