@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { Badge } from '@/components/ui/Badge'
 import { ProgressRing } from '@/components/ui/ProgressRing'
-import { RenameInput } from './RenameInput'
 import type { StudySet, Subject } from '@/types'
 
 interface Props {
@@ -17,74 +16,53 @@ interface Props {
   onEditPrompt: () => void
 }
 
-export function StudySetCard({
-  studySet, subjects, onRename, onDelete, onRefresh, onAssignSubject, onAddDocument, onEditPrompt
-}: Props) {
-  const mastery = 0
-  const lastStudied = studySet.last_studied_at
-    ? new Date(studySet.last_studied_at).toLocaleDateString()
-    : 'Never'
+const STATUS_STYLES: Record<string, { label: string; color: string }> = {
+  processing: { label: 'Generating…', color: 'var(--accent-amber)' },
+  error:      { label: 'Failed',       color: 'var(--error)' },
+  pending:    { label: 'Pending',      color: 'var(--text-muted)' },
+}
+
+export function StudySetCard({ studySet, subjects, onRename, onDelete, onRefresh, onAssignSubject, onAddDocument, onEditPrompt }: Props) {
   const docCount = studySet.documents.length
+  const statusInfo = STATUS_STYLES[studySet.generation_status]
 
   return (
-    <div className="rounded-xl border p-4 flex items-start gap-4 group"
+    <div className="rounded-xl border p-4 flex items-start gap-4 group transition-colors hover:border-[var(--accent-cyan)44]"
       style={{ background: 'var(--bg-surface)', borderColor: 'var(--bg-border)' }}>
-      <ProgressRing value={mastery} max={100} size={52} />
+      <ProgressRing value={0} max={100} size={48} />
+
       <div className="flex-1 min-w-0">
-        <RenameInput value={studySet.name} onSave={onRename} />
+        <Link href={`/study-sets/${studySet.id}`}
+          className="block font-display font-bold text-base truncate hover:opacity-80 transition-opacity"
+          style={{ color: 'var(--text-primary)' }}>
+          {studySet.name}
+        </Link>
         <div className="flex items-center gap-2 mt-1 flex-wrap">
           <Badge label={`${docCount} ${docCount === 1 ? 'doc' : 'docs'}`} />
           <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            {studySet.question_count} questions · Last studied {lastStudied}
+            {studySet.question_count} questions
           </span>
+          {statusInfo && (
+            <span className="text-xs font-semibold" style={{ color: statusInfo.color }}>
+              · {statusInfo.label}
+            </span>
+          )}
         </div>
-        <select className="mt-2 text-xs rounded-md px-2 py-1"
-          style={{ background: 'var(--bg-base)', border: '1px solid var(--bg-border)', color: 'var(--text-muted)' }}
-          value={studySet.subject_id ?? ''}
-          onChange={e => onAssignSubject(e.target.value || null)}>
-          <option value="">Uncategorised</option>
-          {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
       </div>
-      <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+
+      <div className="flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
         {studySet.generation_status === 'done' && (
           <Link href={`/study/${studySet.id}`}
-            className="px-3 py-1 rounded-lg text-xs font-semibold"
+            className="px-3 py-1.5 rounded-lg text-xs font-bold text-center"
             style={{ background: 'var(--accent-cyan)', color: 'var(--bg-base)' }}>
             Study
           </Link>
         )}
-        {studySet.generation_status === 'done' && (
-          <Link href={`/study/${studySet.id}/history`}
-            className="px-3 py-1 rounded-lg text-xs"
-            style={{ color: 'var(--accent-cyan)', border: '1px solid var(--accent-cyan)' }}>
-            History
-          </Link>
-        )}
-        {studySet.generation_status === 'error' && (
-          <span className="text-xs" style={{ color: 'var(--error)' }}>Generation failed</span>
-        )}
-        {studySet.generation_status === 'processing' && (
-          <span className="text-xs" style={{ color: 'var(--accent-amber)' }}>Generating…</span>
-        )}
-        {studySet.generation_status !== 'processing' && (
-          <button onClick={onAddDocument} className="px-3 py-1 rounded-lg text-xs"
-            style={{ color: 'var(--accent-cyan)', border: '1px solid var(--accent-cyan)' }}>
-            + Doc
-          </button>
-        )}
-        <button onClick={onEditPrompt} className="px-3 py-1 rounded-lg text-xs"
-          style={{ color: 'var(--text-muted)', border: '1px solid var(--bg-border)' }}>
-          Edit prompt
-        </button>
-        <button onClick={onRefresh} className="px-3 py-1 rounded-lg text-xs"
-          style={{ color: 'var(--text-muted)', border: '1px solid var(--bg-border)' }}>
-          Refresh
-        </button>
-        <button onClick={onDelete} className="px-3 py-1 rounded-lg text-xs"
-          style={{ color: 'var(--error)', border: '1px solid var(--error)' }}>
-          Delete
-        </button>
+        <Link href={`/study-sets/${studySet.id}`}
+          className="px-3 py-1.5 rounded-lg text-xs font-semibold text-center border"
+          style={{ color: 'var(--accent-cyan)', borderColor: 'var(--accent-cyan)55' }}>
+          Manage
+        </Link>
       </div>
     </div>
   )
