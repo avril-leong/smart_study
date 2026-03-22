@@ -9,21 +9,31 @@ export interface Subject {
   created_at: string
 }
 
+export interface StudySetDocument {
+  id: string
+  study_set_id: string
+  file_name: string
+  file_type: string
+  extracted_text_path: string
+  uploaded_at: string
+}
+
 export interface StudySet {
   id: string
   user_id: string
   subject_id: string | null
   name: string
-  file_name: string
-  file_type: string
-  extracted_text_path: string
+  file_name: string | null            // nullable after migration
+  file_type: string | null            // nullable after migration
+  extracted_text_path: string | null  // nullable after migration
   generation_status: GenerationStatus
   last_studied_at: string | null
   created_at: string
   updated_at: string
-  // joined fields (not in DB)
+  // joined / computed fields (not in DB columns)
   question_count?: number
   subject?: Subject | null
+  documents: StudySetDocument[]       // always populated by useStudySets
 }
 
 export interface MCQOption {
