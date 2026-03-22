@@ -6,8 +6,10 @@ CREATE TABLE study_set_documents (
   file_name           text NOT NULL,
   file_type           text NOT NULL,
   extracted_text_path text NOT NULL,
-  uploaded_at         timestamptz DEFAULT now()
+  uploaded_at         timestamptz NOT NULL DEFAULT now()
 );
+
+CREATE INDEX ON study_set_documents(study_set_id);
 
 ALTER TABLE study_set_documents ENABLE ROW LEVEL SECURITY;
 
@@ -24,4 +26,4 @@ ALTER TABLE study_sets ALTER COLUMN extracted_text_path DROP NOT NULL;
 INSERT INTO study_set_documents (study_set_id, file_name, file_type, extracted_text_path)
 SELECT id, file_name, file_type, extracted_text_path
 FROM study_sets
-WHERE extracted_text_path IS NOT NULL;
+WHERE extracted_text_path IS NOT NULL AND file_name IS NOT NULL AND file_type IS NOT NULL;
