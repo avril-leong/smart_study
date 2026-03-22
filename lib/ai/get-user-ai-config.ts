@@ -11,20 +11,11 @@ const PROVIDER_DEFAULTS: Record<AIProvider, string> = {
   openrouter: 'openai/gpt-4o-mini',
 }
 
-function serverFallback(): AIConfig {
-  return {
-    provider: 'deepseek',
-    apiKey: process.env.DEEPSEEK_API_KEY ?? '',
-    model: 'deepseek-chat',
-    basePrompt: DEFAULT_BASE_PROMPT,
-    globalCustomPrompt: null,
-  }
-}
-
 /**
  * Resolves the AI config for a user.
  * Uses the service-role client so it can read user_ai_settings regardless of RLS.
- * Falls back to the server's DEEPSEEK_API_KEY if no BYOK is configured or decryption fails.
+ * Returns apiKey: '' if no BYOK key is configured — callers must check and return
+ * a helpful error rather than attempting generation without a key.
  */
 export async function getUserAIConfig(
   userId: string,
@@ -36,28 +27,20 @@ export async function getUserAIConfig(
     .eq('user_id', userId)
     .single()
 
-  if (!data) return serverFallback()
+  const provider = ((data?.provider) ?? 'deepseek') as AIProvider
+  const model = data?.model?.trim() || PROVIDER_DEFAULTS[provider]
+  const basePrompt = data?.base_prompt?.trim() || DEFAULT_BASE_PROMPT
+  const globalCustomPrompt = data?.global_custom_prompt ?? null
 
-  const provider = (data.provider ?? 'deepseek') as AIProvider
-  const model = data.model?.trim() || PROVIDER_DEFAULTS[provider]
-  const basePrompt = data.base_prompt?.trim() || DEFAULT_BASE_PROMPT
-  const globalCustomPrompt = data.global_custom_prompt ?? null
-
-  if (!data.encrypted_key || !data.key_iv) {
-    return {
-      ...serverFallback(),
-      provider,
-      model,
-      basePrompt,
-      globalCustomPrompt,
-    }
+  if (!data?.encrypted_key || !data?.key_iv) {
+    return { provider, apiKey: '', model, basePrompt, globalCustomPrompt }
   }
 
   try {
     const apiKey = decryptKey(data.encrypted_key, data.key_iv)
     return { provider, apiKey, model, basePrompt, globalCustomPrompt }
   } catch (err) {
-    console.warn('[getUserAIConfig] Decryption failed, falling back to server key:', err)
-    return { ...serverFallback(), basePrompt, globalCustomPrompt }
+    console.warn('[getUserAIConfig] Decryption failed:', err)
+    return { provider, apiKey: '', model, basePrompt, globalCustomPrompt }
   }
 }

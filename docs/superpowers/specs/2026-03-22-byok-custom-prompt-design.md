@@ -153,7 +153,17 @@ Text:
 ```
 You are a study assistant that generates quiz questions from educational text.
 Always respond with valid JSON only — no explanation, no markdown, no code fences.
+
+Return a JSON array where each object has:
+  - "type": "mcq" or "short_answer"
+  - "question_text": string
+  - "options": array of {label, text} for MCQ (labels "A","B","C","D"), null for short_answer
+  - "correct_answer": for MCQ, the label ("A","B","C","D"); for short_answer, a single word or short phrase (max 5 words) for exact matching
+
+For short_answer, correct_answer MUST be terse (1–5 words) to enable exact string matching.
 ```
+
+The JSON schema is locked here so users never need to include it in their base prompt.
 
 Output is validated as JSON; non-parseable responses retry once (existing behaviour).
 
@@ -190,14 +200,8 @@ Stored in `lib/ai/generate-questions.ts` as exported constant `DEFAULT_BASE_PROM
 
 ```
 Generate {n} quiz questions from the text below.
-Return a JSON array where each object has:
-  - "type": "mcq" or "short_answer"
-  - "question_text": string
-  - "options": array of {label, text} for MCQ (labels "A","B","C","D"), null for short_answer
-  - "correct_answer": for MCQ, the label ("A","B","C","D"); for short_answer, a single word or short phrase (max 5 words) for exact matching
-
-Distribute types: 70% mcq, 30% short_answer.
-For short_answer, correct_answer MUST be terse (1–5 words) to enable exact string matching.
+Distribute types: 70% multiple choice, 30% short answer.
+Short answer questions should have brief, specific answers suitable for exact matching.
 ```
 
 Used when `user_ai_settings.base_prompt` is NULL. The `{n}` placeholder is replaced at generation time.

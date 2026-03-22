@@ -64,8 +64,11 @@ export async function POST(request: NextRequest) {
     }
     const combinedText = texts.join('\n\n---\n\n')
 
-    // Resolve AI config (BYOK or server fallback)
+    // Resolve AI config (BYOK only)
     const aiConfig = await getUserAIConfig(user.id, service)
+    if (!aiConfig.apiKey) {
+      throw new Error('No API key configured. Add your API key in Settings → AI Settings.')
+    }
 
     // Resolve effective custom prompt: body override > set > global > none
     const rawCustomPrompt = bodyCustomPrompt ?? studySet.custom_prompt ?? aiConfig.globalCustomPrompt ?? null

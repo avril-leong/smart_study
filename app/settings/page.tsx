@@ -148,7 +148,7 @@ export default function SettingsPage() {
       <section className="mb-10">
         <h2 className="font-display font-bold text-xl mb-1">AI Settings</h2>
         <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>
-          Control which AI model generates your questions. Leave blank to use the built-in default.
+          Add your own API key to generate questions. Supports OpenAI, DeepSeek, and OpenRouter.
         </p>
 
         <form onSubmit={saveAISettings} className="space-y-8">

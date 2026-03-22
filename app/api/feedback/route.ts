@@ -12,6 +12,9 @@ export async function POST(request: NextRequest) {
   const service = createServiceRoleClient()
   const { questionText, correctAnswer, answerGiven, isCorrect } = await request.json()
   const aiConfig = await getUserAIConfig(user.id, service)
+  if (!aiConfig.apiKey) {
+    return NextResponse.json({ error: 'No API key configured. Add your key in Settings → AI Settings.' }, { status: 400 })
+  }
   const feedback = await getFeedback(questionText, correctAnswer, answerGiven, isCorrect, aiConfig)
   return NextResponse.json({ feedback })
 }
