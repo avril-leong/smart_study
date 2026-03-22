@@ -67,37 +67,109 @@ export default function UploadPage() {
     setError('')
     setStage('uploading')
 
-    // Upload first file — creates the study set
-    const fd0 = new FormData()
-    fd0.append('file', files[0])
-    fd0.append('name', name)
-    if (subjectId) fd0.append('subjectId', subjectId)
-    if (customPrompt.trim()) fd0.append('customPrompt', customPrompt.trim())
+    let studySetId: string | null = null
 
-    const firstRes = await window.fetch('/api/upload', { method: 'POST', body: fd0 })
-    if (!firstRes.ok) {
-      const text = await firstRes.text()
+    // Upload first file — creates the study set
+    const file0 = files[0]
+
+    // Step A: sign
+    const signRes0 = await window.fetch('/api/upload/sign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fileType: file0.type,
+        fileSize: file0.size,
+        name,
+        subjectId: subjectId || undefined,
+        customPrompt: customPrompt.trim() || undefined,
+      }),
+    })
+    if (!signRes0.ok) {
+      const text = await signRes0.text()
       let msg = 'Upload failed'
       try { msg = JSON.parse(text).error ?? msg } catch {}
-      setError(msg)
-      setStage('error')
-      return
+      setError(msg); setStage('error'); return
     }
-    const { studySetId } = await firstRes.json()
+    const sign0 = await signRes0.json()
+    studySetId = sign0.studySetId
+
+    // Step B: direct upload to Supabase Storage
+    const putRes0 = await window.fetch(sign0.signedUrl, {
+      method: 'PUT',
+      body: file0,
+      headers: { 'Content-Type': file0.type },
+    })
+    if (!putRes0.ok) {
+      setError('Storage upload failed for ' + file0.name); setStage('error'); return
+    }
+
+    // Step C: process
+    const procRes0 = await window.fetch('/api/upload/process', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        rawStoragePath: sign0.rawStoragePath,
+        fileName: file0.name,
+        fileType: file0.type,
+        studySetId: sign0.studySetId,
+        documentId: sign0.documentId,
+        isNewStudySet: true,
+        name,
+        subjectId: subjectId || null,
+        customPrompt: customPrompt.trim() || null,
+      }),
+    })
+    if (!procRes0.ok) {
+      const text = await procRes0.text()
+      let msg = 'Upload failed for ' + file0.name
+      try { msg = JSON.parse(text).error ?? msg } catch {}
+      setError(msg); setStage('error'); return
+    }
 
     // Upload remaining files — attach to existing study set
     for (let i = 1; i < files.length; i++) {
-      const fd = new FormData()
-      fd.append('file', files[i])
-      fd.append('studySetId', studySetId)
-      const res = await window.fetch('/api/upload', { method: 'POST', body: fd })
-      if (!res.ok) {
-        const text = await res.text()
-        let msg = `Upload failed for ${files[i].name}`
+      const file = files[i]
+
+      const signRes = await window.fetch('/api/upload/sign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileType: file.type, fileSize: file.size, studySetId }),
+      })
+      if (!signRes.ok) {
+        const text = await signRes.text()
+        let msg = `Upload failed for ${file.name}`
         try { msg = JSON.parse(text).error ?? msg } catch {}
-        setError(msg + '. You can add this file later from the dashboard.')
-        setStage('error')
-        return
+        setError(msg + '. You can add this file later from the dashboard.'); setStage('error'); return
+      }
+      const sign = await signRes.json()
+
+      const putRes = await window.fetch(sign.signedUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type },
+      })
+      if (!putRes.ok) {
+        setError(`Storage upload failed for ${file.name}. You can add this file later from the dashboard.`)
+        setStage('error'); return
+      }
+
+      const procRes = await window.fetch('/api/upload/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rawStoragePath: sign.rawStoragePath,
+          fileName: file.name,
+          fileType: file.type,
+          studySetId,
+          documentId: sign.documentId,
+          isNewStudySet: false,
+        }),
+      })
+      if (!procRes.ok) {
+        const text = await procRes.text()
+        let msg = `Upload failed for ${file.name}`
+        try { msg = JSON.parse(text).error ?? msg } catch {}
+        setError(msg + '. You can add this file later from the dashboard.'); setStage('error'); return
       }
     }
 
@@ -121,9 +193,7 @@ export default function UploadPage() {
       const text = await genRes.text()
       let msg = 'Generation failed'
       try { msg = JSON.parse(text).error ?? msg } catch {}
-      setError(msg)
-      setStage('error')
-      return
+      setError(msg); setStage('error'); return
     }
 
     setStage('done')
