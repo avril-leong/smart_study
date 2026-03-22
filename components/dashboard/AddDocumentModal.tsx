@@ -17,7 +17,7 @@ function formatDate(iso: string) {
 
 export function AddDocumentModal({ studySet, onClose, onStatusChange }: Props) {
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
-  const [uploadedDocIds, setUploadedDocIds] = useState<string[]>([])
+  const [uploadedKeys, setUploadedKeys] = useState<Record<string, string>>({}) // fileKey -> documentId
   const [mode, setMode] = useState<'append' | 'regenerate'>('append')
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
@@ -35,14 +35,16 @@ export function AddDocumentModal({ studySet, onClose, onStatusChange }: Props) {
   }
 
   async function handleConfirm() {
-    if (pendingFiles.length === 0) return
+    if (pendingFiles.length === 0 || uploading) return
     setUploading(true)
     setError('')
 
-    const newDocIds: string[] = [...uploadedDocIds]
-    const remainingFiles = pendingFiles.slice(uploadedDocIds.length)
+    const newKeys: Record<string, string> = { ...uploadedKeys }
 
-    for (const file of remainingFiles) {
+    for (const file of pendingFiles) {
+      const fileKey = file.name + file.size
+      if (newKeys[fileKey]) continue  // already uploaded in a previous attempt
+
       const fd = new FormData()
       fd.append('file', file)
       fd.append('studySetId', studySet.id)
@@ -57,19 +59,29 @@ export function AddDocumentModal({ studySet, onClose, onStatusChange }: Props) {
         return
       }
       const { documentId } = await res.json()
-      newDocIds.push(documentId)
-      setUploadedDocIds([...newDocIds])
+      newKeys[fileKey] = documentId
+      setUploadedKeys({ ...newKeys })
     }
 
     // All uploads succeeded — trigger generation
+    const allDocIds = Object.values(newKeys)
     const body: Record<string, unknown> = { studySetId: studySet.id, mode }
-    if (mode === 'append') body.documentIds = newDocIds
+    if (mode === 'append') body.documentIds = allDocIds
 
-    await window.fetch('/api/generate', {
+    const genRes = await window.fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
+
+    if (!genRes.ok) {
+      const text = await genRes.text()
+      let msg = 'Generation failed'
+      try { msg = JSON.parse(text).error ?? msg } catch {}
+      setError(msg)
+      setUploading(false)
+      return
+    }
 
     onStatusChange(studySet.id, 'processing')
     onClose()
@@ -107,7 +119,7 @@ export function AddDocumentModal({ studySet, onClose, onStatusChange }: Props) {
         {pendingFiles.length > 0 && (
           <ul className="mt-3 space-y-1">
             {pendingFiles.map((f, i) => (
-              <li key={i} className="flex items-center justify-between text-sm">
+              <li key={f.name + f.size} className="flex items-center justify-between text-sm">
                 <span>{f.name} ({(f.size / 1024).toFixed(0)} KB)</span>
                 <button
                   onClick={() => removeFile(i)}
