@@ -21,7 +21,7 @@ CREATE TABLE user_ai_settings (
   provider             text NOT NULL DEFAULT 'deepseek'
                        CHECK (provider IN ('openai', 'deepseek', 'openrouter')),
   model                text NOT NULL DEFAULT 'deepseek-chat',
-  encrypted_key        text,        -- AES-256-GCM ciphertext (hex); NULL = no BYOK
+  encrypted_key        text,        -- AES-256-GCM ciphertext+auth_tag (hex); NULL = no BYOK
   key_iv               text,        -- 12-byte IV (hex); NULL when encrypted_key is NULL
   global_custom_prompt text,        -- user's global custom instruction; NULL = none
   base_prompt          text,        -- user's editable base prompt; NULL = use server default
@@ -40,22 +40,57 @@ CREATE POLICY "user owns ai settings" ON user_ai_settings
 ALTER TABLE study_sets ADD COLUMN custom_prompt text; -- NULL = use global default
 ```
 
+The `StudySet` interface in `types/index.ts` gains `custom_prompt: string | null`.
+
+---
+
+## Shared Types
+
+Add to `types/index.ts`:
+
+```typescript
+export type AIProvider = 'openai' | 'deepseek' | 'openrouter'
+
+export interface AIConfig {
+  provider: AIProvider
+  apiKey: string        // decrypted, server-side only
+  model: string         // resolved (never empty — falls back to provider default)
+  basePrompt: string    // resolved (never empty — falls back to DEFAULT_BASE_PROMPT)
+  globalCustomPrompt: string | null
+}
+```
+
 ---
 
 ## Encryption
 
 **Module:** `lib/crypto.ts`
 
+**Runtime:** Node.js only (`node:crypto`). This module must not be used in Edge runtime routes.
+
 - Algorithm: AES-256-GCM
 - Key source: `SETTINGS_ENCRYPTION_KEY` env var (64-char hex = 32 bytes). Must be set in both `.env.local` and Vercel environment variables.
-- `encryptKey(plaintext: string): { encrypted: string; iv: string }` — generates a random 12-byte IV per call, returns hex-encoded ciphertext and IV.
-- `decryptKey(encrypted: string, iv: string): string` — decrypts using the same env key.
-- The decrypted key is **never** returned to the client. The GET endpoint returns `{ hasKey: boolean }` only (not the key or ciphertext).
+- The 16-byte GCM authentication tag is appended to the ciphertext before hex-encoding, so `encrypted_key` stores `ciphertext + authTag` (hex). Decryption splits the last 32 hex chars (16 bytes) as the auth tag and verifies integrity before returning plaintext. If verification fails, the function throws.
+- `encryptKey(plaintext: string): { encrypted: string; iv: string }` — generates a random 12-byte IV per call; returns hex-encoded `ciphertext+authTag` and IV.
+- `decryptKey(encrypted: string, iv: string): string` — splits auth tag, verifies, decrypts.
+- The decrypted key is **never** returned to the client. The GET endpoint returns `{ hasKey: boolean }` only.
 
-**Prompt injection protection** (also in `lib/crypto.ts` or a sibling `lib/sanitize.ts`):
-- `sanitizePrompt(input: string, maxLength: number): string` — trims whitespace, strips control characters (`\x00`–`\x1F` except `\n` and `\t`), truncates to `maxLength`.
+---
+
+## Prompt Injection Protection
+
+**Module:** `lib/sanitize.ts`
+
+- `sanitizePrompt(input: string, maxLength: number): string`
+  - Trims whitespace
+  - Strips control characters (`\x00`–`\x1F` except `\n` and `\t`)
+  - Truncates to `maxLength`
+  - Rejects obvious override patterns in the base prompt (case-insensitive): if input contains phrases like `"ignore previous instructions"`, `"disregard"`, `"you are now"`, `"system prompt"`, the function throws a `ValidationError` so the API route returns 400
 - Base prompt max: 1000 characters. Custom prompt max: 500 characters.
-- Applied server-side before any prompt is passed to the AI. User prompts are **structurally isolated** in the user message with explicit labels and never placed in the system role.
+- Applied **server-side only** — client character counters are UX only; the POST handler enforces hard limits regardless of client input.
+- User prompts are **structurally isolated** in the user message with explicit labels and never placed in the system role.
+
+**Threat model:** Users can only affect their own generations. The server's DeepSeek fallback key is protected by Vercel's environment variable isolation — it is never readable from client code. If a user has no BYOK configured and abuses the base prompt to generate unusual output, the worst case is malformed questions that fail JSON parsing and trigger `generation_status = 'error'` on their own set.
 
 ---
 
@@ -74,7 +109,7 @@ ALTER TABLE study_sets ADD COLUMN custom_prompt text; -- NULL = use global defau
 ### `lib/ai/create-ai-client.ts`
 
 ```typescript
-createAIClient({ provider, apiKey, model }): { client: OpenAI; model: string }
+createAIClient(config: Pick<AIConfig, 'provider' | 'apiKey' | 'model'>): { client: OpenAI; model: string }
 ```
 
 Returns a configured OpenAI-SDK client pointing at the correct `baseURL` and the resolved model name (falls back to provider default if model is empty).
@@ -82,12 +117,14 @@ Returns a configured OpenAI-SDK client pointing at the correct `baseURL` and the
 ### `lib/ai/get-user-ai-config.ts`
 
 ```typescript
-getUserAIConfig(userId: string): Promise<AIConfig>
+getUserAIConfig(userId: string, serviceClient: SupabaseClient): Promise<AIConfig>
 ```
 
-Reads `user_ai_settings` for the user. If no row or no `encrypted_key`, returns the server fallback (`DEEPSEEK_API_KEY`, `deepseek-chat`). Otherwise decrypts the key and returns `{ provider, apiKey, model, basePrompt, globalCustomPrompt }`.
+Uses the **service-role client** (passed in) to read `user_ai_settings` for the user. If no row or no `encrypted_key`, returns the server fallback (`DEEPSEEK_API_KEY`, provider `'deepseek'`, model `'deepseek-chat'`). Otherwise decrypts the key and returns the full `AIConfig`. If decryption throws, logs server-side warning and falls back to server key.
 
 ### `lib/ai/generate-questions.ts`
+
+Exports `DEFAULT_BASE_PROMPT` (the current hardcoded instructional prompt) so the Settings page can pre-fill the textarea.
 
 Signature change:
 
@@ -96,42 +133,60 @@ generateQuestions(
   text: string,
   studySetId: string,
   aiConfig: AIConfig,
-  customPrompt?: string   // per-set instruction (already resolved: set > global > none)
-): Promise<...>
+  customPrompt?: string   // per-set instruction (resolved: set > global > none), already sanitized
+): Promise<Omit<Question, 'id' | 'created_at'>[]>
 ```
 
-- Builds the AI client dynamically from `aiConfig`.
-- **System prompt** (locked, not user-editable): JSON format contract only — `"You are a study assistant... Always respond with valid JSON only."`
-- **User message** structure:
-  ```
-  [base prompt — instructional part, sanitized]
+Internal `generateFromChunk` receives the same `aiConfig` and `customPrompt` and builds its client dynamically.
 
-  Text:
-  <chunk>
+**User message structure** (the base prompt is placed here, not in the system role):
 
-  Style instructions: <sanitized base prompt from aiConfig>
-  [Additional focus: <sanitized customPrompt>]   ← only if present
-  ```
-- Output is validated as JSON; non-parseable responses retry once (existing behaviour).
+```
+{sanitized aiConfig.basePrompt with {n} replaced}
+
+Text:
+{chunk}
+{if customPrompt}: \n\nAdditional focus: {sanitized customPrompt}
+```
+
+**System prompt** (locked, not user-editable):
+```
+You are a study assistant that generates quiz questions from educational text.
+Always respond with valid JSON only — no explanation, no markdown, no code fences.
+```
+
+Output is validated as JSON; non-parseable responses retry once (existing behaviour).
 
 ### `lib/ai/get-feedback.ts`
 
-Same treatment — builds client dynamically from `AIConfig`. No custom prompt applied here (feedback generation is not user-configurable in this scope).
+Refactored to accept `aiConfig: AIConfig` instead of using a module-level client. No custom prompt applied.
 
 ### `app/api/settings/ai/route.ts`
 
-- `GET` — returns `{ provider, model, hasKey, globalCustomPrompt, basePrompt }`. Never returns the raw or encrypted key.
-- `POST` — accepts `{ provider, model, apiKey?, globalCustomPrompt?, basePrompt? }`. Sanitizes prompts. Encrypts key if provided. Upserts `user_ai_settings`.
+- `GET` — authenticated; reads `user_ai_settings` via service-role client; returns `{ provider, model, hasKey: boolean, globalCustomPrompt, basePrompt }`. Never returns the raw or encrypted key.
+- `POST` — authenticated; accepts `{ provider, model, apiKey?, globalCustomPrompt?, basePrompt? }` as a **single payload for the entire AI settings form** (one Save button, not three separate ones). Sanitizes prompts server-side. Encrypts key if provided. Upserts `user_ai_settings`. Returns `{ ok: true }` or `{ error }`.
+
+### `app/api/settings/ai/test/route.ts`
+
+- `POST` — accepts `{ provider, model, apiKey }` (plaintext key, never stored in this route). Makes a minimal completions call (`max_tokens: 1`) to verify the key is valid. Returns `{ ok: true }` or `{ error: 'Invalid API key' }` (status 400). This is called client-side before the user saves, so they get immediate feedback.
 
 ### `app/api/generate/route.ts`
 
-After auth, calls `getUserAIConfig(user.id)` and resolves the effective custom prompt (`study_set.custom_prompt ?? globalCustomPrompt ?? undefined`), then passes both to `generateQuestions`.
+After auth, calls `getUserAIConfig(user.id, serviceClient)`. Resolves effective custom prompt: `studySet.custom_prompt ?? aiConfig.globalCustomPrompt ?? undefined`. Sanitizes. Passes both to `generateQuestions`.
+
+### `app/api/study-sets/[id]/prompt/route.ts`
+
+- `PATCH` — authenticated; validates ownership (service-role client); sanitizes input (≤ 500 chars); updates `study_sets.custom_prompt`. Returns `{ ok: true }`.
+
+### Upload API (`app/api/upload/route.ts`)
+
+Accepts an optional `customPrompt` field in the form data. Sanitizes (≤ 500 chars) and saves it to `study_sets.custom_prompt` when creating the new study set row.
 
 ---
 
 ## Default Base Prompt
 
-The server-side default (used when `user_ai_settings.base_prompt` is NULL):
+Stored in `lib/ai/generate-questions.ts` as exported constant `DEFAULT_BASE_PROMPT`:
 
 ```
 Generate {n} quiz questions from the text below.
@@ -145,7 +200,7 @@ Distribute types: 70% mcq, 30% short_answer.
 For short_answer, correct_answer MUST be terse (1–5 words) to enable exact string matching.
 ```
 
-This is stored in `lib/ai/generate-questions.ts` as `DEFAULT_BASE_PROMPT` and exported so the Settings page can pre-fill the textarea.
+Used when `user_ai_settings.base_prompt` is NULL. The `{n}` placeholder is replaced at generation time.
 
 ---
 
@@ -153,73 +208,72 @@ This is stored in `lib/ai/generate-questions.ts` as `DEFAULT_BASE_PROMPT` and ex
 
 ### Settings page (`app/settings/page.tsx`)
 
-Two new sections added between Subjects and Account:
+Two new sections added between Subjects and Account. All three fields (provider/model/key, base prompt, global custom instructions) are saved with a **single "Save AI Settings" button** at the bottom of the combined section. This prevents partial-update data loss.
 
 #### AI Provider section
 
 - Provider `<select>`: OpenAI / DeepSeek / OpenRouter
 - Model `<input type="text">`: placeholder shows provider default (e.g. `gpt-4o-mini`)
 - API key `<input type="password">`: placeholder `••••••••` if `hasKey` is true, otherwise `Paste your API key`
-- Collapsible "How to get your key" guide (one per provider, shown based on selected provider):
-  - Sign-up URL, API key page location, recommended model, brief cost note
+- **"Test key" button** next to the key field — calls `/api/settings/ai/test` with the current input to validate before saving. Shows ✓ or error inline.
+- Collapsible "How to get your key" guide (shown per selected provider):
+  - Sign-up URL, API key page location, recommended model, brief cost/capability note
 - Privacy notice: small muted text + lock icon below the key field — *"Your key is encrypted at rest and only used to generate your questions. We never store it in plain text."* — styled subtly (small font, muted colour, not a warning banner)
-- Save button with inline success/error toast
 
-#### Question Style section
+#### Question Generation Style section
 
-- Label: **Question Generation Style**
-- Short guide above textarea: *"This controls how the AI crafts your questions — style, difficulty, question type mix. The JSON format is handled automatically. You can reset to the recommended default at any time."*
-- `<textarea>` pre-filled with `DEFAULT_BASE_PROMPT` (from server if no saved value)
-- "Reset to default" button (restores `DEFAULT_BASE_PROMPT` in the textarea without saving)
-- Character counter showing `n / 1000`
-- Save button
+- Short guide: *"This controls how the AI crafts your questions — style, difficulty, question type mix. The JSON format is handled automatically. You can reset to the recommended default at any time."*
+- `<textarea>` pre-filled with saved value or `DEFAULT_BASE_PROMPT`
+- "Reset to default" button (restores `DEFAULT_BASE_PROMPT` in the textarea, does not save)
+- Character counter `n / 1000`
 
-#### Global Custom Instructions section
+#### Default Custom Instructions section
 
-- Label: **Default Custom Instructions**
 - Short guide: *"Optional extra context added to every study set unless the set has its own instructions. Example: 'Focus on definitions and key terms' or 'Generate harder application-level questions'."*
-- `<textarea>` (max 500 chars) with character counter
-- Save button
+- `<textarea>` (max 500 chars) with character counter `n / 500`
+
+#### Single Save button
+
+- **"Save AI Settings"** — submits all three sections as one payload to `POST /api/settings/ai`
+- Inline success/error feedback
 
 ### Upload page (`app/upload/page.tsx`)
 
 - New optional `<textarea>` below SubjectSelector: **Custom instructions (optional)**
 - Placeholder: *"e.g. 'Focus on key dates and figures', 'Generate harder application questions'"*
-- Pre-filled with `globalCustomPrompt` from user settings (fetched alongside subjects on mount)
-- Value stored in `study_sets.custom_prompt` when the set is created
+- Pre-filled with `globalCustomPrompt` fetched from `/api/settings/ai` on mount (alongside subjects)
+- Sent as `customPrompt` field in the upload form data; saved to `study_sets.custom_prompt` in the upload API
 
 ### AddDocumentModal (`components/dashboard/AddDocumentModal.tsx`)
 
-- Same optional textarea as upload page, shown below the mode selector
-- Pre-filled with `studySet.custom_prompt ?? globalCustomPrompt`
-- Passed to the generate API call body as `customPrompt`
+- Same optional textarea below the mode selector
+- Pre-filled with `studySet.custom_prompt ?? globalCustomPrompt` (globalCustomPrompt fetched from `/api/settings/ai` on modal open)
+- Passed to the generate API call body as `customPrompt` (the generate API sanitizes it again)
 
 ### Dashboard StudySetCard — "Edit prompt" button
 
 - New "Edit prompt" button in hover actions (between Refresh and Delete)
-- Opens a small `EditPromptModal` component (`components/dashboard/EditPromptModal.tsx`):
+- Opens `EditPromptModal` (`components/dashboard/EditPromptModal.tsx`):
   - Textarea pre-filled with `studySet.custom_prompt ?? ''`
-  - Placeholder shows global default if set, otherwise example text
-  - Save calls `PATCH /api/study-sets/[id]/prompt` which updates `study_sets.custom_prompt`
-  - Does **not** trigger regeneration — just saves the prompt for next generation
-
-### New API route: `app/api/study-sets/[id]/prompt/route.ts`
-
-- `PATCH` — validates ownership, sanitizes input (≤ 500 chars), updates `study_sets.custom_prompt`. Returns `{ ok: true }`.
+  - Placeholder: global default if set, otherwise example text
+  - Character counter `n / 500`
+  - Save calls `PATCH /api/study-sets/[id]/prompt`
+  - Does **not** trigger regeneration — just saves for the next generation run
 
 ---
 
 ## Error Handling
 
-- If decryption fails (e.g. `SETTINGS_ENCRYPTION_KEY` rotated), `getUserAIConfig` falls back to the server key and logs a server-side warning. The user sees normal generation — they may notice quality differences and can re-save their key.
-- If the BYOK API key is invalid (provider returns 401/403), the generate API returns `{ error: 'AI provider rejected the API key. Check your key in Settings.' }` with status 500.
-- If the base prompt is so malformed that JSON parsing fails after retry, the existing error path sets `generation_status = 'error'` as before.
+- **Decryption failure** (`SETTINGS_ENCRYPTION_KEY` rotated): `getUserAIConfig` logs server-side warning, silently falls back to server key. User sees normal generation.
+- **Invalid BYOK key** (provider returns 401/403): generate API returns `{ error: 'AI provider rejected the API key. Check your key in Settings.' }` with status **502** (Bad Gateway — upstream rejected the key, not a server bug).
+- **Malformed base prompt** (JSON parsing fails after retry): existing error path sets `generation_status = 'error'`.
+- **Prompt injection detected** (`sanitizePrompt` throws): `POST /api/settings/ai` returns 400 with `{ error: 'Prompt contains disallowed content' }`.
 
 ---
 
 ## Out of Scope
 
 - Allowing users to edit the locked system prompt (JSON format contract).
-- Applying BYOK to the feedback endpoint's provider choice (feedback always uses the same config as generation, but no separate feedback-specific prompt).
-- Key rotation UI (users can overwrite by saving a new key).
+- Per-provider custom prompt (feedback uses same `AIConfig` as generation).
+- Key rotation UI (users overwrite by saving a new key).
 - Usage tracking or cost estimation per provider.
