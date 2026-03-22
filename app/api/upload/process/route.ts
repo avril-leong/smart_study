@@ -109,7 +109,8 @@ export async function POST(request: NextRequest) {
   const sanitizedFileName = fileName.trim()
 
   // 7. Validate subjectId if provided
-  if (subjectId != null && subjectId !== '' && !UUID_V4_RE.test(subjectId)) {
+  const normalizedSubjectId = subjectId || null
+  if (normalizedSubjectId != null && !UUID_V4_RE.test(normalizedSubjectId)) {
     return NextResponse.json({ error: 'Invalid subjectId' }, { status: 400 })
   }
 
@@ -203,7 +204,7 @@ export async function POST(request: NextRequest) {
       id: studySetId,
       user_id: user.id,
       name: sanitizedName,
-      subject_id: subjectId || null,
+      subject_id: normalizedSubjectId,
       custom_prompt: sanitizedCustomPrompt,
       generation_status: 'pending',
       file_name: null,
