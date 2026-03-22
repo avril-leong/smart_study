@@ -1,7 +1,11 @@
 'use client'
 import { useRef, useState } from 'react'
 
-interface Props { onFile: (file: File) => void; disabled?: boolean }
+interface Props {
+  onFiles: (files: File[]) => void
+  disabled?: boolean
+  multiple?: boolean
+}
 
 const LABELS: Record<string, string> = {
   'application/pdf': 'PDF', 'text/plain': 'TXT', 'text/markdown': 'MD',
@@ -12,25 +16,28 @@ const LABELS: Record<string, string> = {
 // Kept in sync with lib/parsers/index.ts PARSERS map (server-only)
 const SUPPORTED_TYPES = Object.keys(LABELS)
 
-export function DropZone({ onFile, disabled }: Props) {
+export function DropZone({ onFiles, disabled, multiple = false }: Props) {
   const [dragging, setDragging] = useState(false)
   const [error, setError] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
-  function validate(file: File) {
+  function validate(file: File): boolean {
     if (!SUPPORTED_TYPES.includes(file.type)) {
       setError(`Unsupported file type. Accepted: ${Object.values(LABELS).join(', ')}`)
       return false
     }
     if (file.size > 50 * 1024 * 1024) { setError('File too large (max 50MB)'); return false }
-    setError('')
     return true
+  }
+
+  function handleFiles(incoming: File[]) {
+    const valid = incoming.filter(validate)
+    if (valid.length > 0) { setError(''); onFiles(valid) }
   }
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault(); setDragging(false)
-    const file = e.dataTransfer.files[0]
-    if (file && validate(file)) onFile(file)
+    handleFiles(Array.from(e.dataTransfer.files))
   }
 
   return (
@@ -41,14 +48,21 @@ export function DropZone({ onFile, disabled }: Props) {
         className="border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-colors"
         style={{ borderColor: dragging ? 'var(--accent-cyan)' : 'var(--bg-border)',
                  background: dragging ? 'var(--accent-cyan)11' : 'transparent' }}>
-        <p className="font-display text-lg font-semibold mb-2">Drop your file here</p>
+        <p className="font-display text-lg font-semibold mb-2">
+          {multiple ? 'Drop your files here' : 'Drop your file here'}
+        </p>
         <p className="text-sm mb-1" style={{ color: 'var(--text-muted)' }}>or click to browse</p>
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
           {Object.values(LABELS).join(' · ')} · Max 50MB
         </p>
         <input ref={inputRef} type="file" className="hidden" disabled={disabled}
+          multiple={multiple}
           accept={SUPPORTED_TYPES.join(',')}
-          onChange={e => { const f = e.target.files?.[0]; if (f && validate(f)) onFile(f); e.target.value = '' }} />
+          onChange={e => {
+            const files = Array.from(e.target.files ?? [])
+            if (files.length > 0) handleFiles(files)
+            e.target.value = ''
+          }} />
       </div>
       {error && <p className="mt-2 text-sm" style={{ color: 'var(--error)' }}>{error}</p>}
     </div>
