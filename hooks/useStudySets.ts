@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { StudySet, StudySetDocument, Subject, GenerationStatus } from '@/types'
 
@@ -7,6 +7,7 @@ export function useStudySets() {
   const [studySets, setStudySets] = useState<StudySet[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [loading, setLoading] = useState(true)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const loadData = useCallback(async () => {
     const supabase = createClient()
@@ -20,7 +21,7 @@ export function useStudySets() {
       const withCounts = await Promise.all(sets.map(async (s) => {
         const { count } = await supabase.from('questions')
           .select('*', { count: 'exact', head: true }).eq('study_set_id', s.id)
-        return { ...s, question_count: count ?? 0, documents: [] as StudySetDocument[] }
+        return { ...s, question_count: count ?? 0, documents: [] as StudySetDocument[], mastery: 0 }
       }))
 
       // Batch fetch documents (single query)
@@ -38,6 +39,31 @@ export function useStudySets() {
         }, {} as Record<string, StudySetDocument[]>)
 
         withCounts.forEach(s => { s.documents = docsBySet[s.id] ?? [] })
+
+        // Batch fetch mastery: question_state rows with repetitions > 0
+        const { data: masteredStates } = await supabase
+          .from('question_state')
+          .select('question_id')
+          .gt('repetitions', 0)
+
+        if (masteredStates && masteredStates.length > 0) {
+          const masteredIds = masteredStates.map((r: { question_id: string }) => r.question_id)
+          const { data: masteredQs } = await supabase
+            .from('questions')
+            .select('id, study_set_id')
+            .in('study_set_id', setIds)
+            .in('id', masteredIds)
+
+          const masteredBySet = (masteredQs ?? []).reduce((acc, q) => {
+            acc[q.study_set_id] = (acc[q.study_set_id] ?? 0) + 1
+            return acc
+          }, {} as Record<string, number>)
+
+          withCounts.forEach(s => {
+            const mastered = masteredBySet[s.id] ?? 0
+            s.mastery = s.question_count > 0 ? Math.round((mastered / s.question_count) * 100) : 0
+          })
+        }
       }
 
       setStudySets(withCounts)
@@ -47,6 +73,27 @@ export function useStudySets() {
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
+
+  // Poll generation status for any processing sets
+  useEffect(() => {
+    const processingIds = studySets.filter(s => s.generation_status === 'processing').map(s => s.id)
+    if (processingIds.length === 0) {
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+      return
+    }
+    if (pollRef.current) clearInterval(pollRef.current)
+    pollRef.current = setInterval(async () => {
+      for (const id of processingIds) {
+        const r = await window.fetch(`/api/generate/status/${id}`)
+        if (!r.ok) continue
+        const { status, questionCount } = await r.json()
+        setStudySets(prev => prev.map(s =>
+          s.id === id ? { ...s, generation_status: status, question_count: questionCount ?? s.question_count } : s
+        ))
+      }
+    }, 3000)
+    return () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null } }
+  }, [studySets.filter(s => s.generation_status === 'processing').map(s => s.id).join(',')]) // eslint-disable-line
 
   async function renameSet(id: string, name: string) {
     const supabase = createClient()

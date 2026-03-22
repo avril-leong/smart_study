@@ -30,21 +30,36 @@ export async function GET(request: NextRequest) {
     : null
 
   if (!question) {
-    // Step 2: Never attempted — get answered IDs first, then exclude them
-    const { data: answered } = await service
-      .from('question_state')
-      .select('question_id, questions!inner(study_set_id)')
-      .eq('user_id', userId)
-      .eq('questions.study_set_id', studySetId)
+    // Step 2: Never attempted — find unattempted questions
+    // Get all question IDs for this study set
+    const { data: allQs } = await service
+      .from('questions')
+      .select('id')
+      .eq('study_set_id', studySetId)
 
-    const answeredIds = (answered ?? []).map((s: { question_id: string }) => s.question_id)
+    const allIds = (allQs ?? []).map((q: { id: string }) => q.id)
 
-    let newQQuery = supabase.from('questions').select('*').eq('study_set_id', studySetId)
-    if (answeredIds.length > 0) {
-      newQQuery = newQQuery.not('id', 'in', `(${answeredIds.join(',')})`)
+    // Get which of those have been attempted by this user
+    const { data: attempted } = allIds.length > 0
+      ? await service
+          .from('question_state')
+          .select('question_id')
+          .eq('user_id', userId)
+          .in('question_id', allIds)
+      : { data: [] }
+
+    const attemptedIds = (attempted ?? []).map((s: { question_id: string }) => s.question_id)
+    const unattemptedIds = allIds.filter(id => !attemptedIds.includes(id))
+
+    if (unattemptedIds.length > 0) {
+      const { data: newQ } = await service
+        .from('questions')
+        .select('*')
+        .in('id', unattemptedIds)
+        .limit(1)
+        .maybeSingle()
+      question = newQ
     }
-    const { data: newQ } = await newQQuery.limit(1).maybeSingle()
-    question = newQ
   }
 
   // In normal mode: done when all questions have been seen at least once

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { useStudySession } from '@/hooks/useStudySession'
 import { QuestionCard } from '@/components/study/QuestionCard'
 import { FeedbackPanel } from '@/components/study/FeedbackPanel'
@@ -54,6 +55,15 @@ export default function StudyPage() {
 
   return (
     <main className="min-h-screen p-6 max-w-2xl mx-auto">
+      <div className="mb-4">
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-1.5 text-sm transition-colors"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          <span>←</span> Dashboard
+        </Link>
+      </div>
       <SessionProgress current={session.total} total={totalQuestions}
         correct={session.score} studySetName={studySetName} />
       {session.question && (

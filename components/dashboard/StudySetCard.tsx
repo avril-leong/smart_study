@@ -11,7 +11,7 @@ interface Props {
 }
 
 export function StudySetCard({ studySet, onOpenSettings }: Props) {
-  const mastery = 0
+  const mastery = studySet.mastery ?? 0
   const lastStudied = studySet.last_studied_at
     ? new Date(studySet.last_studied_at).toLocaleDateString()
     : 'Never'
@@ -49,7 +49,10 @@ export function StudySetCard({ studySet, onOpenSettings }: Props) {
           <p className="text-xs mt-1" style={{ color: 'var(--error)' }}>Generation failed</p>
         )}
         {studySet.generation_status === 'processing' && (
-          <p className="text-xs mt-1" style={{ color: 'var(--accent-amber)' }}>Generating…</p>
+          <p className="text-xs mt-1 flex items-center gap-1.5" style={{ color: 'var(--accent-amber)' }}>
+            <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--accent-amber)' }} />
+            Generating{studySet.question_count > 0 ? ` · ${studySet.question_count} so far` : '…'}
+          </p>
         )}
 
         {studySet.generation_status === 'done' && (
