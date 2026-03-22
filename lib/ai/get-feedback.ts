@@ -1,18 +1,17 @@
-import OpenAI from 'openai'
-
-const ai = new OpenAI({
-  apiKey: process.env.DEEPSEEK_API_KEY,
-  baseURL: 'https://api.deepseek.com',
-})
+// lib/ai/get-feedback.ts
+import { createAIClient } from './create-ai-client'
+import type { AIConfig } from '@/types'
 
 export async function getFeedback(
   questionText: string,
   correctAnswer: string,
   answerGiven: string,
-  isCorrect: boolean
+  isCorrect: boolean,
+  aiConfig: AIConfig
 ): Promise<string> {
-  const res = await ai.chat.completions.create({
-    model: 'deepseek-chat',
+  const { client, model } = createAIClient(aiConfig)
+  const res = await client.chat.completions.create({
+    model,
     messages: [
       {
         role: 'system',
