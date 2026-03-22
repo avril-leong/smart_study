@@ -13,7 +13,7 @@ type Stage = 'idle' | 'uploading' | 'generating' | 'done' | 'error'
 
 export default function UploadPage() {
   const router = useRouter()
-  const [file, setFile] = useState<File | null>(null)
+  const [files, setFiles] = useState<File[]>([])
   const [name, setName] = useState('')
   const [subjectId, setSubjectId] = useState('')
   const [subjects, setSubjects] = useState<Subject[]>([])
@@ -23,9 +23,7 @@ export default function UploadPage() {
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
-    return () => {
-      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
-    }
+    return () => { if (pollIntervalRef.current) clearInterval(pollIntervalRef.current) }
   }, [])
 
   useEffect(() => {
@@ -33,50 +31,83 @@ export default function UploadPage() {
       .then(({ data }) => { if (data) setSubjects(data) })
   }, [])
 
-  function handleFile(f: File) {
-    setFile(f)
-    if (!name) setName(f.name.replace(/\.[^/.]+$/, ''))
+  function addFiles(incoming: File[]) {
+    setFiles(prev => {
+      const existing = new Set(prev.map(f => f.name + f.size))
+      const newOnes = incoming.filter(f => !existing.has(f.name + f.size))
+      if (prev.length === 0 && newOnes.length > 0 && !name) {
+        setName(newOnes[0].name.replace(/\.[^/.]+$/, ''))
+      }
+      return [...prev, ...newOnes]
+    })
+  }
+
+  function removeFile(index: number) {
+    setFiles(prev => prev.filter((_, i) => i !== index))
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!file) return
-    setError(''); setStage('uploading')
+    if (files.length === 0) return
+    setError('')
+    setStage('uploading')
 
-    const fd = new FormData()
-    fd.append('file', file)
-    fd.append('name', name)
-    if (subjectId) fd.append('subjectId', subjectId)
+    // Upload first file — creates the study set
+    const fd0 = new FormData()
+    fd0.append('file', files[0])
+    fd0.append('name', name)
+    if (subjectId) fd0.append('subjectId', subjectId)
 
-    const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd })
-    if (!uploadRes.ok) {
-      const text = await uploadRes.text()
+    const firstRes = await window.fetch('/api/upload', { method: 'POST', body: fd0 })
+    if (!firstRes.ok) {
+      const text = await firstRes.text()
       let msg = 'Upload failed'
       try { msg = JSON.parse(text).error ?? msg } catch {}
-      setError(msg); setStage('error'); return
+      setError(msg)
+      setStage('error')
+      return
     }
-    const { studySetId } = await uploadRes.json()
+    const { studySetId } = await firstRes.json()
 
+    // Upload remaining files — attach to existing study set
+    for (let i = 1; i < files.length; i++) {
+      const fd = new FormData()
+      fd.append('file', files[i])
+      fd.append('studySetId', studySetId)
+      const res = await window.fetch('/api/upload', { method: 'POST', body: fd })
+      if (!res.ok) {
+        const text = await res.text()
+        let msg = `Upload failed for ${files[i].name}`
+        try { msg = JSON.parse(text).error ?? msg } catch {}
+        setError(msg + '. You can add this file later from the dashboard.')
+        setStage('error')
+        return
+      }
+    }
+
+    // Start generating
     setStage('generating')
-
     pollIntervalRef.current = setInterval(async () => {
-      const r = await fetch(`/api/generate/status/${studySetId}`)
+      const r = await window.fetch(`/api/generate/status/${studySetId}`)
       const { questionCount: qc } = await r.json()
       setQuestionCount(qc)
     }, 3000)
 
-    const genRes = await fetch('/api/generate', {
+    const genRes = await window.fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studySetId }),
+      body: JSON.stringify({ studySetId, mode: 'regenerate' }),
     })
+
     clearInterval(pollIntervalRef.current ?? undefined)
 
     if (!genRes.ok) {
       const text = await genRes.text()
       let msg = 'Generation failed'
       try { msg = JSON.parse(text).error ?? msg } catch {}
-      setError(msg); setStage('error'); return
+      setError(msg)
+      setStage('error')
+      return
     }
 
     setStage('done')
@@ -92,8 +123,19 @@ export default function UploadPage() {
           <Spinner size={40} />
           <p className="mt-4 font-display font-semibold text-lg">Generating your questions…</p>
           {questionCount > 0 && (
-            <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>{questionCount} questions so far</p>
+            <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
+              {questionCount} questions created so far
+            </p>
           )}
+          <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+            This usually takes 1–3 minutes
+          </p>
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="mt-6 text-sm underline"
+            style={{ color: 'var(--text-muted)' }}>
+            Leave &mdash; I&apos;ll check later
+          </button>
         </div>
       )}
 
@@ -106,18 +148,41 @@ export default function UploadPage() {
 
       {(stage === 'idle' || stage === 'uploading' || stage === 'error') && (
         <form onSubmit={handleSubmit} className="space-y-6">
-          <DropZone onFile={handleFile} disabled={stage === 'uploading'} />
-          {file && (
+          <DropZone multiple onFiles={addFiles} disabled={stage === 'uploading'} />
+
+          {/* File chip list */}
+          {files.length > 0 && (
+            <ul className="space-y-1">
+              {files.map((f, i) => (
+                <li key={f.name + f.size} className="flex items-center justify-between text-sm rounded-lg px-3 py-2"
+                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--bg-border)' }}>
+                  <span>{f.name} <span style={{ color: 'var(--text-muted)' }}>({(f.size / 1024).toFixed(0)} KB)</span></span>
+                  <button type="button"
+                    onClick={() => removeFile(i)}
+                    disabled={stage === 'uploading'}
+                    className="ml-3 text-xs"
+                    style={{ color: 'var(--error)', opacity: stage === 'uploading' ? 0.4 : 1 }}>
+                    ✕
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {files.length > 0 && (
             <>
               <div>
                 <label className="block text-sm font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>
                   Study Set Name
                 </label>
-                <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Chapter 4 Notes" required />
+                <Input value={name} onChange={e => setName(e.target.value)}
+                  placeholder="e.g. Chapter 4 Notes" required />
               </div>
               <SubjectSelector subjects={subjects} value={subjectId} onChange={setSubjectId} />
               {error && <p className="text-sm" style={{ color: 'var(--error)' }}>{error}</p>}
-              <Button type="submit" disabled={stage === 'uploading'} className="w-full">
+              <Button type="submit"
+                disabled={stage === 'uploading' || files.length === 0 || !name.trim()}
+                className="w-full">
                 {stage === 'uploading' ? 'Uploading…' : 'Upload & Generate Questions'}
               </Button>
             </>
