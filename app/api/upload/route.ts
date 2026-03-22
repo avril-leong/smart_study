@@ -1,3 +1,5 @@
+export const maxDuration = 60 // PDF parsing can be slow for large files
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { parseFile, SUPPORTED_TYPES } from '@/lib/parsers/index'

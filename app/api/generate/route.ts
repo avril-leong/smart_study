@@ -1,4 +1,6 @@
 // app/api/generate/route.ts
+export const maxDuration = 300 // 5 minutes — Pro plan; free plan is capped at 60s
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { generateQuestions } from '@/lib/ai/generate-questions'
