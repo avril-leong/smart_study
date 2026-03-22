@@ -88,6 +88,7 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     await service.from('study_sets').update({ generation_status: 'error' }).eq('id', studySetId)
     const message = err instanceof Error ? err.message : 'Unknown error'
+    console.error('[generate] failed for studySetId:', studySetId, '—', message, err)
     // 502 if AI provider rejected the key
     const isProviderRejection = message.toLowerCase().includes('401') || message.toLowerCase().includes('403')
     if (isProviderRejection) {

@@ -41,7 +41,11 @@ async function generateFromChunk(
       ],
       temperature: 0.7,
     })
-    const raw = res.choices[0].message.content ?? '[]'
+    let raw = res.choices[0].message.content ?? '[]'
+    // Strip markdown code fences (DeepSeek sometimes wraps JSON despite instructions)
+    const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/)
+    if (fenceMatch) raw = fenceMatch[1]
+    raw = raw.trim()
     const parsed = JSON.parse(raw) as Record<string, unknown>[]
     return parsed.map(q => ({
       study_set_id: studySetId,

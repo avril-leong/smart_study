@@ -176,8 +176,13 @@ export default function UploadPage() {
     setStage('generating')
     pollIntervalRef.current = setInterval(async () => {
       const r = await window.fetch(`/api/generate/status/${studySetId}`)
-      const { questionCount: qc } = await r.json()
+      const { status: genStatus, questionCount: qc } = await r.json()
       setQuestionCount(qc)
+      if (genStatus === 'error') {
+        clearInterval(pollIntervalRef.current ?? undefined)
+        setError('Generation failed. You can retry from the dashboard.')
+        setStage('error')
+      }
     }, 3000)
 
     try {
