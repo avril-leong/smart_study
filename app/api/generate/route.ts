@@ -10,6 +10,10 @@ export async function POST(request: NextRequest) {
   const { studySetId, mode = 'regenerate', documentIds } = await request.json()
   if (!studySetId) return NextResponse.json({ error: 'Missing studySetId' }, { status: 400 })
 
+  if (mode !== 'append' && mode !== 'regenerate') {
+    return NextResponse.json({ error: 'mode must be "append" or "regenerate"' }, { status: 400 })
+  }
+
   // Validate append-mode requirement
   if (mode === 'append' && (!documentIds || documentIds.length === 0)) {
     return NextResponse.json({ error: 'documentIds required for append mode' }, { status: 400 })
