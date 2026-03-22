@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { parseFile, SUPPORTED_TYPES } from '@/lib/parsers/index'
 
-const MAX_SIZE = 50 * 1024 * 1024 // 50MB
+const MAX_SIZE = 50 * 1024 * 1024
 
 export async function POST(request: NextRequest) {
   const supabase = createClient()
@@ -13,13 +13,15 @@ export async function POST(request: NextRequest) {
   const file = formData.get('file') as File | null
   const name = formData.get('name') as string | null
   const subjectId = formData.get('subjectId') as string | null
+  const existingStudySetId = formData.get('studySetId') as string | null
 
-  if (!file || !name) return NextResponse.json({ error: 'Missing file or name' }, { status: 400 })
+  if (!file) return NextResponse.json({ error: 'Missing file' }, { status: 400 })
   if (file.size > MAX_SIZE) return NextResponse.json({ error: 'File too large (max 50MB)' }, { status: 400 })
   if (!SUPPORTED_TYPES.includes(file.type)) {
     return NextResponse.json({ error: `Unsupported file type: ${file.type}` }, { status: 400 })
   }
 
+  // Extract text from file
   let extractedText: string
   try {
     const buffer = Buffer.from(await file.arrayBuffer())
@@ -29,30 +31,68 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 422 })
   }
 
-  // Generate a study set ID upfront so we can name the storage file
-  const studySetId = crypto.randomUUID()
-  const storagePath = `${user.id}/${studySetId}.txt`
-
   const service = createServiceRoleClient()
 
-  // Upload .txt sidecar
+  if (existingStudySetId) {
+    // Attaching a new document to an existing study set
+    const { data: existing } = await service.from('study_sets')
+      .select('id, user_id')
+      .eq('id', existingStudySetId)
+      .single()
+    if (!existing || existing.user_id !== user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const documentId = crypto.randomUUID()
+    const storagePath = `${user.id}/${existingStudySetId}/${documentId}.txt`
+
+    const { error: storageError } = await service.storage
+      .from('study-files')
+      .upload(storagePath, Buffer.from(extractedText, 'utf-8'), { contentType: 'text/plain' })
+    if (storageError) return NextResponse.json({ error: 'Storage upload failed' }, { status: 500 })
+
+    const { error: dbError } = await service.from('study_set_documents').insert({
+      study_set_id: existingStudySetId,
+      file_name: file.name,
+      file_type: file.type,
+      extracted_text_path: storagePath,
+    })
+    if (dbError) return NextResponse.json({ error: 'Database insert failed' }, { status: 500 })
+
+    return NextResponse.json({ studySetId: existingStudySetId, documentId })
+  }
+
+  // Creating a new study set
+  if (!name) return NextResponse.json({ error: 'Missing name' }, { status: 400 })
+
+  const studySetId = crypto.randomUUID()
+  const documentId = crypto.randomUUID()
+  const storagePath = `${user.id}/${studySetId}/${documentId}.txt`
+
   const { error: storageError } = await service.storage
     .from('study-files')
     .upload(storagePath, Buffer.from(extractedText, 'utf-8'), { contentType: 'text/plain' })
   if (storageError) return NextResponse.json({ error: 'Storage upload failed' }, { status: 500 })
 
-  // Insert study_set row
-  const { error: dbError } = await service.from('study_sets').insert({
+  const { error: setError } = await service.from('study_sets').insert({
     id: studySetId,
     user_id: user.id,
     subject_id: subjectId || null,
     name,
+    file_name: null,
+    file_type: null,
+    extracted_text_path: null,
+    generation_status: 'pending',
+  })
+  if (setError) return NextResponse.json({ error: 'Database insert failed' }, { status: 500 })
+
+  const { error: docError } = await service.from('study_set_documents').insert({
+    study_set_id: studySetId,
     file_name: file.name,
     file_type: file.type,
     extracted_text_path: storagePath,
-    generation_status: 'pending',
   })
-  if (dbError) return NextResponse.json({ error: 'Database insert failed' }, { status: 500 })
+  if (docError) return NextResponse.json({ error: 'Database insert failed' }, { status: 500 })
 
-  return NextResponse.json({ studySetId })
+  return NextResponse.json({ studySetId, documentId })
 }
