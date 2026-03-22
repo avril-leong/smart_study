@@ -1,17 +1,16 @@
 'use client'
 import { useState } from 'react'
 import { StudySetCard } from './StudySetCard'
-import type { StudySet, Subject } from '@/types'
+import type { StudySet } from '@/types'
 
 interface Props {
   title: string
   color?: string
   studySets: StudySet[]
-  subjects: Subject[]
   onOpenSettings: (id: string) => void
 }
 
-export function SubjectGroup({ title, color, studySets, subjects, onOpenSettings }: Props) {
+export function SubjectGroup({ title, color, studySets, onOpenSettings }: Props) {
   const [open, setOpen] = useState(true)
   if (studySets.length === 0) return null
 
@@ -29,7 +28,6 @@ export function SubjectGroup({ title, color, studySets, subjects, onOpenSettings
             <StudySetCard
               key={s.id}
               studySet={s}
-              subjects={subjects}
               onOpenSettings={() => onOpenSettings(s.id)}
             />
           ))}

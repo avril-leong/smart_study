@@ -60,10 +60,10 @@ export default function DashboardPage() {
         <>
           {grouped.map(({ subject, sets }) => (
             <SubjectGroup key={subject.id} title={subject.name} color={subject.color}
-              studySets={sets} subjects={subjects}
+              studySets={sets}
               onOpenSettings={handleOpenSettings} />
           ))}
-          <SubjectGroup title="Uncategorised" studySets={uncategorised} subjects={subjects}
+          <SubjectGroup title="Uncategorised" studySets={uncategorised}
             onOpenSettings={handleOpenSettings} />
         </>
       )}
