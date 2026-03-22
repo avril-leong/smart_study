@@ -46,7 +46,9 @@ Also add `SETTINGS_ENCRYPTION_KEY` to Vercel environment variables when deployin
 | `app/upload/page.tsx` | Modify | Add custom prompt textarea, pre-fill from global settings |
 | `components/dashboard/AddDocumentModal.tsx` | Modify | Add custom prompt textarea, pre-fill from set or global |
 | `components/dashboard/StudySetCard.tsx` | Modify | Add "Edit prompt" button |
+| `components/dashboard/SubjectGroup.tsx` | Modify | Thread `onEditPrompt` prop through to StudySetCard |
 | `components/dashboard/EditPromptModal.tsx` | Create | Modal for editing per-set custom prompt |
+| `app/dashboard/page.tsx` | Modify | Add editPromptTarget state, fetch globalCustomPrompt, render EditPromptModal |
 
 ---
 
@@ -1797,8 +1799,7 @@ Expected: All tests pass.
 ```bash
 git add app/upload/page.tsx components/dashboard/AddDocumentModal.tsx \
         components/dashboard/StudySetCard.tsx components/dashboard/EditPromptModal.tsx \
-        components/dashboard/SubjectGroup.tsx app/dashboard/page.tsx \
-        app/api/generate/route.ts
+        components/dashboard/SubjectGroup.tsx app/dashboard/page.tsx
 git commit -m "feat: add custom prompt UI to upload, AddDocumentModal, StudySetCard, and EditPromptModal"
 ```
 
