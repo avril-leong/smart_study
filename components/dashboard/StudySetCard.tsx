@@ -54,6 +54,13 @@ export function StudySetCard({
             Study
           </Link>
         )}
+        {studySet.generation_status === 'done' && (
+          <Link href={`/study/${studySet.id}/history`}
+            className="px-3 py-1 rounded-lg text-xs"
+            style={{ color: 'var(--accent-cyan)', border: '1px solid var(--accent-cyan)' }}>
+            History
+          </Link>
+        )}
         {studySet.generation_status === 'error' && (
           <span className="text-xs" style={{ color: 'var(--error)' }}>Generation failed</span>
         )}
