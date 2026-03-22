@@ -10,7 +10,7 @@ An AI-powered study app that turns your lecture notes and PDFs into personalised
 ![Vitest](https://img.shields.io/badge/Vitest-6E9F18?style=for-the-badge&logo=vitest&logoColor=white)
 ![License: MIT](https://img.shields.io/badge/License-MIT-38bdf8?style=for-the-badge)
 
-> **Note:** This project was built to test the [Claude Code Superpowers](https://github.com/anthropics/claude-code) skill — an agentic workflow plugin for Claude Code that enables brainstorming, spec writing, plan writing, and subagent-driven development. The entire codebase was designed and implemented through that workflow.
+> **Note:** This project was built to test the [Claude Code Superpowers](https://github.com/anthropics/claude-code) skill — an agentic workflow plugin for Claude Code that enables brainstorming, spec writing, plan writing, and subagent-driven development.
 
 ---
 
