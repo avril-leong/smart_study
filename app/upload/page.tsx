@@ -22,6 +22,7 @@ export default function UploadPage() {
   const [questionCount, setQuestionCount] = useState(0)
   const [customPrompt, setCustomPrompt] = useState('')
   const [globalCustomPrompt, setGlobalCustomPrompt] = useState('')
+  const [hasKey, setHasKey] = useState(false)
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -37,6 +38,7 @@ export default function UploadPage() {
         const g = d.globalCustomPrompt ?? ''
         setGlobalCustomPrompt(g)
         setCustomPrompt(g)
+        setHasKey(d.hasKey ?? false)
       })
   }, [])
 
@@ -58,6 +60,10 @@ export default function UploadPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (files.length === 0) return
+    if (!hasKey) {
+      setError('No API key configured. Go to Settings → AI Settings to add your key before generating questions.')
+      return
+    }
     setError('')
     setStage('uploading')
 

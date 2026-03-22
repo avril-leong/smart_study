@@ -23,11 +23,15 @@ export function AddDocumentModal({ studySet, onClose, onStatusChange }: Props) {
   const [error, setError] = useState('')
   const [customPrompt, setCustomPrompt] = useState(studySet.custom_prompt ?? '')
   const [globalCustomPrompt, setGlobalCustomPrompt] = useState('')
+  const [hasKey, setHasKey] = useState(false)
 
   useEffect(() => {
     window.fetch('/api/settings/ai')
       .then(r => r.json())
-      .then(d => { setGlobalCustomPrompt(d.globalCustomPrompt ?? '') })
+      .then(d => {
+        setGlobalCustomPrompt(d.globalCustomPrompt ?? '')
+        setHasKey(d.hasKey ?? false)
+      })
   }, [])
 
   function addPending(incoming: File[]) {
@@ -44,6 +48,10 @@ export function AddDocumentModal({ studySet, onClose, onStatusChange }: Props) {
 
   async function handleConfirm() {
     if (pendingFiles.length === 0 || uploading) return
+    if (!hasKey) {
+      setError('No API key configured. Go to Settings → AI Settings to add your key before generating questions.')
+      return
+    }
     setUploading(true)
     setError('')
 
