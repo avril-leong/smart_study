@@ -1,18 +1,32 @@
+// app/dashboard/page.tsx
 'use client'
+import { useState } from 'react'
 import Link from 'next/link'
 import { useStudySets } from '@/hooks/useStudySets'
 import { SubjectGroup } from '@/components/dashboard/SubjectGroup'
+import { AddDocumentModal } from '@/components/dashboard/AddDocumentModal'
 import { Spinner } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
+import type { StudySet } from '@/types'
 
 export default function DashboardPage() {
-  const { studySets, subjects, loading, renameSet, deleteSet, assignSubject, refreshSet } = useStudySets()
+  const {
+    studySets, subjects, loading,
+    renameSet, deleteSet, assignSubject, refreshSet, updateSetStatus,
+  } = useStudySets()
+
+  const [addDocTarget, setAddDocTarget] = useState<StudySet | null>(null)
 
   const grouped = subjects.map(sub => ({
     subject: sub,
     sets: studySets.filter(s => s.subject_id === sub.id),
   }))
   const uncategorised = studySets.filter(s => !s.subject_id)
+
+  function handleAddDocument(id: string) {
+    const set = studySets.find(s => s.id === id)
+    if (set) setAddDocTarget(set)
+  }
 
   return (
     <main className="min-h-screen p-6 max-w-3xl mx-auto">
@@ -38,11 +52,23 @@ export default function DashboardPage() {
           {grouped.map(({ subject, sets }) => (
             <SubjectGroup key={subject.id} title={subject.name} color={subject.color}
               studySets={sets} subjects={subjects}
-              onRename={renameSet} onDelete={deleteSet} onAssignSubject={assignSubject} onRefresh={refreshSet} />
+              onRename={renameSet} onDelete={deleteSet}
+              onAssignSubject={assignSubject} onRefresh={refreshSet}
+              onAddDocument={handleAddDocument} />
           ))}
           <SubjectGroup title="Uncategorised" studySets={uncategorised} subjects={subjects}
-            onRename={renameSet} onDelete={deleteSet} onAssignSubject={assignSubject} onRefresh={refreshSet} />
+            onRename={renameSet} onDelete={deleteSet}
+            onAssignSubject={assignSubject} onRefresh={refreshSet}
+            onAddDocument={handleAddDocument} />
         </>
+      )}
+
+      {addDocTarget && (
+        <AddDocumentModal
+          studySet={addDocTarget}
+          onClose={() => setAddDocTarget(null)}
+          onStatusChange={updateSetStatus}
+        />
       )}
     </main>
   )
