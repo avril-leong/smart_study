@@ -212,8 +212,9 @@ export async function POST(request: NextRequest) {
       extracted_text_path: null,
     })
     if (setError) {
-      // Check unique constraint BEFORE cleanup — the concurrent request that won may need the text file
       if (setError.code === '23505') {
+        // Concurrent request already created the row — clean up this request's orphaned files
+        await tryDeleteStorage(service, [rawStoragePath, textStoragePath])
         return NextResponse.json({ error: 'Study set already exists (concurrent request)' }, { status: 409 })
       }
       await tryDeleteStorage(service, [rawStoragePath, textStoragePath])

@@ -80,7 +80,6 @@ export default function UploadPage() {
         fileType: file0.type,
         fileSize: file0.size,
         name,
-        subjectId: subjectId || undefined,
         customPrompt: customPrompt.trim() || undefined,
       }),
     })
@@ -181,23 +180,25 @@ export default function UploadPage() {
       setQuestionCount(qc)
     }, 3000)
 
-    const genRes = await window.fetch('/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studySetId, mode: 'regenerate' }),
-    })
+    try {
+      const genRes = await window.fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studySetId, mode: 'regenerate' }),
+      })
 
-    clearInterval(pollIntervalRef.current ?? undefined)
+      if (!genRes.ok) {
+        const text = await genRes.text()
+        let msg = 'Generation failed'
+        try { msg = JSON.parse(text).error ?? msg } catch {}
+        setError(msg); setStage('error'); return
+      }
 
-    if (!genRes.ok) {
-      const text = await genRes.text()
-      let msg = 'Generation failed'
-      try { msg = JSON.parse(text).error ?? msg } catch {}
-      setError(msg); setStage('error'); return
+      setStage('done')
+      setTimeout(() => router.push('/dashboard'), 1500)
+    } finally {
+      clearInterval(pollIntervalRef.current ?? undefined)
     }
-
-    setStage('done')
-    setTimeout(() => router.push('/dashboard'), 1500)
   }
 
   return (
