@@ -12,7 +12,7 @@ import type { StudySet } from '@/types'
 export default function DashboardPage() {
   const {
     studySets, subjects, loading,
-    renameSet, deleteSet, assignSubject, refreshSet, updateSetStatus,
+    renameSet, deleteSet, assignSubject, refreshSet, updateSetStatus, refresh,
   } = useStudySets()
 
   const [addDocTarget, setAddDocTarget] = useState<StudySet | null>(null)
@@ -66,7 +66,7 @@ export default function DashboardPage() {
       {addDocTarget && (
         <AddDocumentModal
           studySet={addDocTarget}
-          onClose={() => setAddDocTarget(null)}
+          onClose={() => { setAddDocTarget(null); refresh() }}
           onStatusChange={updateSetStatus}
         />
       )}
