@@ -29,7 +29,11 @@ focus_lesson_content?: boolean
 
 ## AI Prompt Change (`lib/ai/generate-questions.ts`)
 
-The system prompt becomes a function rather than a constant. When `focusLessonContent` is `true`, the following paragraph is appended:
+The system prompt is currently a module-level constant string. It becomes a function that returns a string based on the `focusLessonContent` flag.
+
+**Placement rationale:** The focus instruction is a behavioural constraint on the model — it governs how the model reads and interprets the input, not what input it receives. It therefore belongs in the **system prompt**, not the user message. This is intentionally different from `customPrompt` (which is user-supplied focus guidance and stays in the user message under `Additional focus:`). Hardcoded behavioural constraints go in the system message; user-authored instructions go in the user message.
+
+The focus instruction appended to the system prompt when `focusLessonContent` is `true`:
 
 ```
 Focus exclusively on subject matter concepts, theories, definitions, and principles.
@@ -43,7 +47,14 @@ fewer questions rather than asking about irrelevant material.
 - Positive framing first ("Focus exclusively on...") before exclusions
 - Named, specific categories rather than vague "ignore irrelevant content"
 - Clear fallback behaviour ("return fewer questions rather than...")
-- Appended to system prompt (behavioural instruction), not user message
+- No sanitization needed — this is hardcoded application text, not user-supplied input
+
+Note: `generateQuestions` calls `generateFromChunk` exactly once with the full (capped) text. There is no chunking loop. The `focusLessonContent` parameter simply threads through to that single call.
+
+**Important:** The retry recursive call inside `generateFromChunk` must also pass `focusLessonContent`, otherwise retries silently drop the flag. Updated retry call:
+```ts
+return generateFromChunk(chunk, studySetId, n, aiConfig, customPrompt, focusLessonContent, retries - 1)
+```
 
 `generateFromChunk` signature change:
 ```ts
@@ -74,13 +85,33 @@ export async function generateQuestions(
 
 ## Settings API (`app/api/study-sets/[id]/settings/route.ts`)
 
-Accept `focusLessonContent: boolean` in the PATCH body. Validate it is a boolean. Save to `study_sets.focus_lesson_content`.
+Accept `focusLessonContent` in the PATCH body. Use `'focusLessonContent' in body` guard (consistent with the `subjectId`/`customPrompt` pattern; `questionCountPref` uses `!== undefined` which also works for a boolean but `'in body'` is preferred here). Validate it is a boolean. Map camelCase → snake_case: `focusLessonContent` → `updates.focus_lesson_content`.
+
+```ts
+if ('focusLessonContent' in body) {
+  if (typeof body.focusLessonContent !== 'boolean')
+    return NextResponse.json({ error: 'focusLessonContent must be a boolean' }, { status: 400 })
+  updates.focus_lesson_content = body.focusLessonContent
+}
+```
 
 ---
 
 ## Generate API (`app/api/generate/route.ts`)
 
-Read `focus_lesson_content` from the study set row (add to the `.select()` call). Pass it to `generateQuestions`.
+Add `focus_lesson_content` to the study set select. Full updated select string:
+
+```ts
+.select('id, user_id, generation_status, custom_prompt, question_count_pref, focus_lesson_content')
+```
+
+Read the value and pass to `generateQuestions`:
+```ts
+const focusLessonContent = (studySet as { focus_lesson_content?: boolean | null }).focus_lesson_content ?? false
+const questions = await generateQuestions(combinedText, studySetId, aiConfig, customPrompt, questionCount, focusLessonContent)
+```
+
+**Zero-questions edge case:** If `focusLessonContent` is enabled and the document is entirely administrative, the AI returns an empty array. The existing `if (questions.length > 0)` guard skips the insert. `generation_status` is set to `'done'` with zero questions — the same outcome as today for a document that yields no questions. The dashboard card will show the "0 questions" badge and the Study/History buttons (status is `done`). This is acceptable: "0 questions" with the toggle enabled clearly signals the user to review their content or disable the toggle. No code changes needed for this case.
 
 ---
 
@@ -90,10 +121,12 @@ Add a toggle below the Custom Instructions section:
 
 - **Label:** "Focus on lesson content only"
 - **Disclaimer** (always visible below toggle): *"The AI will attempt to skip administrative content such as deadlines and course schedules. Results may not be perfect."*
-- Default: `false`
+- Default state: `false`
 - State initialised from `studySet.focus_lesson_content ?? false`
-- Included in the Save Changes PATCH payload as `focusLessonContent`
+- Included in the Save Changes PATCH payload as `focusLessonContent: boolean`
+- The `onSaved` partial update should include `focus_lesson_content: focusLessonContent` for consistency with other fields (the parent already calls `refresh()` which refetches all data, so the partial is not strictly needed but keeps the pattern consistent)
 - Takes effect on the next generation only (no auto-regenerate on save)
+- Modal close behavior: `save()` calls `onSaved(partial)` which the parent handles by calling `refresh()` and closing the modal via `setSettingsTarget(null)`. The modal itself does not call `onClose()` directly — this matches the existing pattern for the save action.
 
 ---
 
@@ -102,10 +135,10 @@ Add a toggle below the Custom Instructions section:
 | File | Change |
 |------|--------|
 | `types/index.ts` | Add `focus_lesson_content?: boolean` to `StudySet` |
-| `lib/ai/generate-questions.ts` | System prompt as function; add `focusLessonContent` param |
-| `app/api/generate/route.ts` | Read `focus_lesson_content`, pass to `generateQuestions` |
-| `app/api/study-sets/[id]/settings/route.ts` | Accept + save `focusLessonContent` |
-| `components/dashboard/StudySetSettingsModal.tsx` | Add toggle + disclaimer |
+| `lib/ai/generate-questions.ts` | System prompt as function; add `focusLessonContent` param to both functions |
+| `app/api/generate/route.ts` | Extend `.select()`, read `focus_lesson_content`, pass to `generateQuestions` |
+| `app/api/study-sets/[id]/settings/route.ts` | Accept + validate + save `focusLessonContent` → `focus_lesson_content` |
+| `components/dashboard/StudySetSettingsModal.tsx` | Add toggle + disclaimer; include in PATCH payload and `onSaved` partial |
 
 ---
 
@@ -114,3 +147,4 @@ Add a toggle below the Custom Instructions section:
 - Global toggle (feature is per-study-set only)
 - Auto-regeneration on toggle save
 - Pre-processing text filters or two-pass AI generation
+- Surfacing a specific warning when zero questions are generated due to filtering
