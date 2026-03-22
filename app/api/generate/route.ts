@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
   // Verify ownership — also fetch custom_prompt and question_count_pref
   const { data: studySet } = await service.from('study_sets')
-    .select('id, user_id, generation_status, custom_prompt, question_count_pref')
+    .select('id, user_id, generation_status, custom_prompt, question_count_pref, focus_lesson_content')
     .eq('id', studySetId).single()
 
   if (!studySet || studySet.user_id !== user.id)
@@ -77,7 +77,8 @@ export async function POST(request: NextRequest) {
     const customPrompt = rawCustomPrompt ? sanitizePrompt(rawCustomPrompt, 500) : undefined
 
     const questionCount = (studySet as { question_count_pref?: number | null }).question_count_pref ?? 25
-    const questions = await generateQuestions(combinedText, studySetId, aiConfig, customPrompt, questionCount)
+    const focusLessonContent = (studySet as { focus_lesson_content?: boolean | null }).focus_lesson_content ?? false
+    const questions = await generateQuestions(combinedText, studySetId, aiConfig, customPrompt, questionCount, focusLessonContent)
 
     if (questions.length > 0) {
       const { error: insertError } = await service.from('questions').insert(questions)
