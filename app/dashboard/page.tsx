@@ -1,19 +1,46 @@
 // app/dashboard/page.tsx
 'use client'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useStudySets } from '@/hooks/useStudySets'
 import { SubjectGroup } from '@/components/dashboard/SubjectGroup'
+import { AddDocumentModal } from '@/components/dashboard/AddDocumentModal'
+import { EditPromptModal } from '@/components/dashboard/EditPromptModal'
 import { Spinner } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
+import type { StudySet } from '@/types'
 
 export default function DashboardPage() {
-  const { studySets, subjects, loading } = useStudySets()
+  const {
+    studySets, subjects, loading,
+    renameSet, deleteSet, assignSubject, refreshSet, updateSetStatus, refresh,
+  } = useStudySets()
+
+  const [addDocTarget, setAddDocTarget] = useState<StudySet | null>(null)
+  const [editPromptTarget, setEditPromptTarget] = useState<StudySet | null>(null)
+  const [globalCustomPrompt, setGlobalCustomPrompt] = useState('')
+
+  useEffect(() => {
+    window.fetch('/api/settings/ai')
+      .then(r => r.json())
+      .then(d => setGlobalCustomPrompt(d.globalCustomPrompt ?? ''))
+  }, [])
 
   const grouped = subjects.map(sub => ({
     subject: sub,
     sets: studySets.filter(s => s.subject_id === sub.id),
   }))
   const uncategorised = studySets.filter(s => !s.subject_id)
+
+  function handleAddDocument(id: string) {
+    const set = studySets.find(s => s.id === id)
+    if (set) setAddDocTarget(set)
+  }
+
+  function handleEditPrompt(id: string) {
+    const set = studySets.find(s => s.id === id)
+    if (set) setEditPromptTarget(set)
+  }
 
   return (
     <main className="min-h-screen p-6 max-w-3xl mx-auto">
@@ -38,10 +65,32 @@ export default function DashboardPage() {
         <>
           {grouped.map(({ subject, sets }) => (
             <SubjectGroup key={subject.id} title={subject.name} color={subject.color}
-              studySets={sets} subjects={subjects} />
+              studySets={sets} subjects={subjects}
+              onRename={renameSet} onDelete={deleteSet}
+              onAssignSubject={assignSubject} onRefresh={refreshSet}
+              onAddDocument={handleAddDocument} onEditPrompt={handleEditPrompt} />
           ))}
-          <SubjectGroup title="Uncategorised" studySets={uncategorised} subjects={subjects} />
+          <SubjectGroup title="Uncategorised" studySets={uncategorised} subjects={subjects}
+            onRename={renameSet} onDelete={deleteSet}
+            onAssignSubject={assignSubject} onRefresh={refreshSet}
+            onAddDocument={handleAddDocument} onEditPrompt={handleEditPrompt} />
         </>
+      )}
+
+      {addDocTarget && (
+        <AddDocumentModal
+          studySet={addDocTarget}
+          onClose={() => { setAddDocTarget(null); refresh() }}
+          onStatusChange={updateSetStatus}
+        />
+      )}
+
+      {editPromptTarget && (
+        <EditPromptModal
+          studySet={editPromptTarget}
+          globalCustomPrompt={globalCustomPrompt}
+          onClose={() => { setEditPromptTarget(null); refresh() }}
+        />
       )}
     </main>
   )
