@@ -7,37 +7,65 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { studySetId } = await request.json()
+  const { studySetId, mode = 'regenerate', documentIds } = await request.json()
   if (!studySetId) return NextResponse.json({ error: 'Missing studySetId' }, { status: 400 })
+
+  // Validate append-mode requirement
+  if (mode === 'append' && (!documentIds || documentIds.length === 0)) {
+    return NextResponse.json({ error: 'documentIds required for append mode' }, { status: 400 })
+  }
 
   const service = createServiceRoleClient()
 
   // Verify ownership
   const { data: studySet } = await service.from('study_sets')
-    .select('id, user_id, extracted_text_path, generation_status')
+    .select('id, user_id, generation_status')
     .eq('id', studySetId).single()
 
   if (!studySet || studySet.user_id !== user.id)
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  if (studySet.generation_status === 'done')
-    return NextResponse.json({ ok: true, message: 'Already generated' })
+  // Only short-circuit if already processing (prevent concurrent runs)
+  if (studySet.generation_status === 'processing')
+    return NextResponse.json({ ok: true, message: 'Already processing' })
+
+  // Delete existing questions for regenerate mode
+  if (mode === 'regenerate') {
+    await service.from('questions').delete().eq('study_set_id', studySetId)
+  }
 
   // Mark processing
   await service.from('study_sets').update({ generation_status: 'processing' }).eq('id', studySetId)
 
   try {
-    // Download .txt sidecar
-    const { data: fileData, error: dlError } = await service.storage
-      .from('study-files').download(studySet.extracted_text_path)
-    if (dlError || !fileData) throw new Error('Failed to download text sidecar')
+    // Fetch documents
+    let docsQuery = service.from('study_set_documents')
+      .select('extracted_text_path')
+      .eq('study_set_id', studySetId)
 
-    const text = await fileData.text()
+    if (mode === 'append' && documentIds?.length > 0) {
+      docsQuery = docsQuery.in('id', documentIds)
+    }
+
+    const { data: docs } = await docsQuery
+
+    if (!docs || docs.length === 0) {
+      throw new Error('No documents found for this study set')
+    }
+
+    // Download and concatenate all document texts
+    const texts: string[] = []
+    for (const doc of docs) {
+      const { data: fileData, error: dlError } = await service.storage
+        .from('study-files').download(doc.extracted_text_path)
+      if (dlError || !fileData) throw new Error(`Failed to download: ${doc.extracted_text_path}`)
+      texts.push(await fileData.text())
+    }
+    const combinedText = texts.join('\n\n---\n\n')
 
     // Generate questions
-    const questions = await generateQuestions(text, studySetId)
+    const questions = await generateQuestions(combinedText, studySetId)
 
-    // Bulk insert
     if (questions.length > 0) {
       const { error: insertError } = await service.from('questions').insert(questions)
       if (insertError) throw new Error('Failed to insert questions')
