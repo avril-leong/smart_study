@@ -54,7 +54,7 @@ export default function StudyPage() {
   )
 
   return (
-    <main className="min-h-screen p-6 max-w-2xl mx-auto">
+    <main id="main-content" className="min-h-screen p-6 max-w-2xl mx-auto">
       <div className="mb-4">
         <Link
           href="/dashboard"

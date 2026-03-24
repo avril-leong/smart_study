@@ -20,7 +20,8 @@ export function FeedbackPanel({ visible, feedback, loading, isCorrect, onNext }:
           className="mt-6 p-6 rounded-2xl border"
           style={{ background: 'var(--bg-surface)', borderColor: isCorrect ? 'var(--success)' : 'var(--error)' }}>
           <p className="font-display font-bold mb-3" style={{ color: isCorrect ? 'var(--success)' : 'var(--error)' }}>
-            {isCorrect ? '✓ Correct' : '✗ Incorrect'}
+            <span aria-hidden="true">{isCorrect ? '✓ ' : '✗ '}</span>
+            {isCorrect ? 'Correct' : 'Incorrect'}
           </p>
           {loading ? <Spinner /> : (
             <>

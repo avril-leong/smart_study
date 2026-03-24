@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { StudySet, Subject } from '@/types'
 
 interface Props {
@@ -27,6 +27,17 @@ export function StudySetSettingsModal({
   const [error, setError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [focusLessonContent, setFocusLessonContent] = useState(studySet.focus_lesson_content ?? true)
+
+  // Escape key + body scroll lock
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handler)
+    return () => {
+      document.body.style.overflow = ''
+      document.removeEventListener('keydown', handler)
+    }
+  }, [onClose])
 
   async function save() {
     if (!name.trim()) return
@@ -63,6 +74,9 @@ export function StudySetSettingsModal({
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
       style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="settings-modal-title"
     >
       <div
         className="w-full sm:max-w-md mx-0 sm:mx-4 rounded-t-2xl sm:rounded-2xl flex flex-col"
@@ -78,11 +92,11 @@ export function StudySetSettingsModal({
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest mb-0.5"
               style={{ color: 'var(--text-muted)' }}>Study Set</p>
-            <h2 className="font-display font-bold text-lg leading-tight">{studySet.name}</h2>
+            <h2 id="settings-modal-title" className="font-display font-bold text-lg leading-tight">{studySet.name}</h2>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-lg transition-colors"
+            className="w-9 h-9 rounded-lg flex items-center justify-center text-lg transition-colors hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-cyan)]"
             style={{ color: 'var(--text-muted)' }}
             aria-label="Close"
           >✕</button>
@@ -99,7 +113,7 @@ export function StudySetSettingsModal({
               value={name}
               onChange={e => setName(e.target.value)}
               maxLength={200}
-              className="w-full rounded-lg px-3 py-2 text-sm"
+              className="w-full rounded-lg px-3 py-2.5 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-cyan)]"
               style={{
                 background: 'var(--bg-base)',
                 border: '1px solid var(--bg-border)',
@@ -115,14 +129,14 @@ export function StudySetSettingsModal({
             <select
               value={subjectId}
               onChange={e => setSubjectId(e.target.value)}
-              className="w-full rounded-lg px-3 py-2 text-sm"
+              className="w-full rounded-lg px-3 py-2.5 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-cyan)]"
               style={{
                 background: 'var(--bg-base)',
                 border: '1px solid var(--bg-border)',
                 color: 'var(--text-primary)',
               }}
             >
-              <option value="">Uncategorised</option>
+              <option value="">Uncategorized</option>
               {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
@@ -142,7 +156,7 @@ export function StudySetSettingsModal({
               rows={3}
               maxLength={500}
               placeholder={globalCustomPrompt || 'e.g. Focus on key definitions, generate harder questions'}
-              className="w-full rounded-lg px-3 py-2 text-sm resize-none"
+              className="w-full rounded-lg px-3 py-2 text-sm resize-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-cyan)]"
               style={{
                 background: 'var(--bg-base)',
                 border: '1px solid var(--bg-border)',
@@ -173,7 +187,7 @@ export function StudySetSettingsModal({
                 role="switch"
                 aria-checked={focusLessonContent}
                 onClick={() => setFocusLessonContent(v => !v)}
-                className="relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors"
+                className="relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-cyan)]"
                 style={{
                   background: focusLessonContent ? 'var(--accent-cyan)' : 'var(--bg-border)',
                 }}
@@ -194,18 +208,23 @@ export function StudySetSettingsModal({
 
           {/* Question count */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-widest mb-2"
-              style={{ color: 'var(--text-muted)' }}>Questions per Generation</label>
-            <div className="flex rounded-lg overflow-hidden"
-              style={{ border: '1px solid var(--bg-border)' }}>
+            <p className="block text-xs font-semibold uppercase tracking-widest mb-2"
+              style={{ color: 'var(--text-muted)' }}>Questions per Generation</p>
+            <div
+              className="flex rounded-lg overflow-hidden"
+              style={{ border: '1px solid var(--bg-border)' }}
+              role="group"
+              aria-label="Questions per generation"
+            >
               {QUESTION_COUNTS.map((n, i) => (
                 <button
                   key={n}
                   onClick={() => setQuestionCount(n)}
-                  className="flex-1 py-2 text-sm font-semibold transition-colors"
+                  aria-pressed={questionCount === n}
+                  className="flex-1 py-3 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[var(--accent-cyan)]"
                   style={{
                     background: questionCount === n ? 'var(--accent-cyan)' : 'var(--bg-base)',
-                    color: questionCount === n ? 'var(--bg-base)' : 'var(--text-muted)',
+                    color: questionCount === n ? 'var(--text-on-accent)' : 'var(--text-muted)',
                     borderRight: i < QUESTION_COUNTS.length - 1 ? '1px solid var(--bg-border)' : 'none',
                   }}
                 >
@@ -221,7 +240,7 @@ export function StudySetSettingsModal({
           <div className="space-y-2">
             <button
               onClick={onAddDocument}
-              className="w-full py-2 px-3 rounded-lg text-sm text-left font-medium transition-colors"
+              className="w-full py-3 px-3 rounded-lg text-sm text-left font-medium transition-colors hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-cyan)]"
               style={{
                 background: 'var(--bg-base)',
                 border: '1px solid var(--bg-border)',
@@ -232,7 +251,7 @@ export function StudySetSettingsModal({
             </button>
             <button
               onClick={onRefresh}
-              className="w-full py-2 px-3 rounded-lg text-sm text-left font-medium transition-colors"
+              className="w-full py-3 px-3 rounded-lg text-sm text-left font-medium transition-colors hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-cyan)]"
               style={{
                 background: 'var(--bg-base)',
                 border: '1px solid var(--bg-border)',
@@ -248,7 +267,7 @@ export function StudySetSettingsModal({
             {!confirmDelete ? (
               <button
                 onClick={() => setConfirmDelete(true)}
-                className="w-full py-2 rounded-lg text-sm font-medium transition-colors"
+                className="w-full py-3 rounded-lg text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--error)]"
                 style={{ border: '1px solid var(--error)', color: 'var(--error)' }}
               >
                 Delete Study Set
@@ -262,14 +281,14 @@ export function StudySetSettingsModal({
                 <div className="flex gap-2">
                   <button
                     onClick={onDelete}
-                    className="flex-1 py-1.5 rounded-lg text-sm font-semibold"
-                    style={{ background: 'var(--error)', color: '#fff' }}
+                    className="flex-1 py-2.5 rounded-lg text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--error)]"
+                    style={{ background: 'var(--error)', color: 'var(--text-on-accent)' }}
                   >
                     Delete
                   </button>
                   <button
                     onClick={() => setConfirmDelete(false)}
-                    className="flex-1 py-1.5 rounded-lg text-sm"
+                    className="flex-1 py-2.5 rounded-lg text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-cyan)]"
                     style={{ border: '1px solid var(--bg-border)', color: 'var(--text-muted)' }}
                   >
                     Cancel
@@ -288,10 +307,10 @@ export function StudySetSettingsModal({
           <button
             onClick={save}
             disabled={saving || !name.trim()}
-            className="flex-1 py-2 rounded-lg text-sm font-semibold transition-opacity"
+            className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-opacity focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-cyan)]"
             style={{
               background: 'var(--accent-cyan)',
-              color: 'var(--bg-base)',
+              color: 'var(--text-on-accent)',
               opacity: saving || !name.trim() ? 0.5 : 1,
             }}
           >
@@ -299,7 +318,7 @@ export function StudySetSettingsModal({
           </button>
           <button
             onClick={onClose}
-            className="py-2 px-4 rounded-lg text-sm"
+            className="py-2.5 px-4 rounded-lg text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-cyan)]"
             style={{ border: '1px solid var(--bg-border)', color: 'var(--text-muted)' }}
           >
             Cancel

@@ -26,7 +26,7 @@ export function StudySetCard({ studySet, onOpenSettings }: Props) {
           <span className="font-display font-semibold leading-snug">{studySet.name}</span>
           <button
             onClick={onOpenSettings}
-            className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+            className="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-colors hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-cyan)]"
             style={{ color: 'var(--text-muted)' }}
             title="Settings"
             aria-label="Open settings"
@@ -60,7 +60,7 @@ export function StudySetCard({ studySet, onOpenSettings }: Props) {
             <Link
               href={`/study/${studySet.id}`}
               className="px-3 py-1 rounded-lg text-xs font-semibold"
-              style={{ background: 'var(--accent-cyan)', color: 'var(--bg-base)' }}
+              style={{ background: 'var(--accent-cyan)', color: 'var(--text-on-accent)' }}
             >
               Study
             </Link>

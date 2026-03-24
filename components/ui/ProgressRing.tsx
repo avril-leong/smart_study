@@ -3,7 +3,7 @@ export function ProgressRing({ value, max, size = 56 }: { value: number; max: nu
   const circ = 2 * Math.PI * r
   const offset = circ - (value / max) * circ
   return (
-    <svg width={size} height={size}>
+    <svg width={size} height={size} role="img" aria-label={`${max > 0 ? Math.round((value / max) * 100) : 0}% mastery`}>
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--bg-border)" strokeWidth="4" />
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--accent-cyan)" strokeWidth="4"
         strokeDasharray={circ} strokeDashoffset={offset}

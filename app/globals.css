@@ -3,22 +3,51 @@
 @tailwind utilities;
 
 :root {
-  --bg-base:      #0d1117;
-  --bg-surface:   #161d2e;
-  --bg-border:    #2a3a55;
-  --accent-cyan:  #38bdf8;
-  --accent-amber: #fbbf24;
-  --success:      #34d399;
-  --error:        #fb7185;
-  --text-primary: #e2e8f0;
-  --text-muted:   #8899b4;
-  --answer-a:     #38bdf8;
+  /* Backgrounds — warm near-black */
+  --bg-base:        #0e0b08;
+  --bg-surface:     #181310;
+  --bg-border:      #2e2318;
+
+  /* Accent — warm amber gold (replaces cold AI-cyan) */
+  --accent-cyan:    #f0a830;
+  --accent-amber:   #fbbf24;   /* Brighter yellow — used for processing state */
+
+  /* Semantic */
+  --success:        #4ade80;
+  --error:          #f87171;
+
+  /* Text */
+  --text-primary:   #ede8d8;
+  --text-muted:     #8a7860;
+  --text-on-accent: #0e0b08;   /* Dark text for use on amber backgrounds */
+
+  /* Answer option colours */
+  --answer-a:     #60a5fa;
   --answer-b:     #fbbf24;
-  --answer-c:     #a78bfa;
-  --answer-d:     #fb7185;
+  --answer-c:     #c084fc;
+  --answer-d:     #f87171;
+
+  /* Answer colour alpha variants — avoids fragile hex concatenation */
+  --answer-a-subtle: color-mix(in srgb, #60a5fa 15%, transparent);
+  --answer-a-mid:    color-mix(in srgb, #60a5fa 28%, transparent);
+  --answer-b-subtle: color-mix(in srgb, #fbbf24 15%, transparent);
+  --answer-b-mid:    color-mix(in srgb, #fbbf24 28%, transparent);
+  --answer-c-subtle: color-mix(in srgb, #c084fc 15%, transparent);
+  --answer-c-mid:    color-mix(in srgb, #c084fc 28%, transparent);
+  --answer-d-subtle: color-mix(in srgb, #f87171 15%, transparent);
+  --answer-d-mid:    color-mix(in srgb, #f87171 28%, transparent);
 }
 
 body {
   background-color: var(--bg-base);
   color: var(--text-primary);
+}
+
+/* Respect user motion preferences globally */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
