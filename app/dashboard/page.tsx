@@ -38,14 +38,29 @@ export default function DashboardPage() {
   }
 
   return (
-    <main id="main-content" className="min-h-screen p-6 max-w-3xl mx-auto">
-      <header className="flex items-center justify-between mb-10">
-        <h1 className="font-display text-4xl font-extrabold" style={{ color: 'var(--accent-cyan)' }}>
+    <main id="main-content" className="min-h-screen p-4 sm:p-6 max-w-3xl mx-auto">
+      <header className="flex items-center justify-between mb-6 sm:mb-10">
+        <h1 className="font-display text-2xl sm:text-4xl font-extrabold" style={{ color: 'var(--accent-cyan)' }}>
           SmartStudy
         </h1>
-        <div className="flex gap-3">
-          <Link href="/settings"><Button variant="ghost" size="sm">Settings</Button></Link>
-          <Link href="/upload"><Button size="sm">+ New Study Set</Button></Link>
+        <div className="flex gap-2 sm:gap-3">
+          <Link href="/settings">
+            <Button variant="ghost" size="sm" aria-label="Settings">
+              {/* Icon on mobile */}
+              <svg className="sm:hidden" width="16" height="16" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M7.5 9.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" stroke="currentColor" strokeWidth="1.2"/>
+                <path d="M6.09 1.5h2.82l.5 1.67c.4.16.77.38 1.1.64l1.72-.48 1.41 2.44-1.3 1.17c.04.2.06.41.06.56s-.02.36-.06.56l1.3 1.17-1.41 2.44-1.72-.48c-.33.26-.7.48-1.1.64l-.5 1.67H6.09l-.5-1.67c-.4-.16-.77-.38-1.1-.64l-1.72.48L1.36 9.06l1.3-1.17A4 4 0 0 1 2.6 7.5c0-.15.02-.36.06-.56L1.36 5.77l1.41-2.44 1.72.48c.33-.26.7-.48 1.1-.64l.5-1.67Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+              </svg>
+              {/* Text on sm+ */}
+              <span className="hidden sm:inline">Settings</span>
+            </Button>
+          </Link>
+          <Link href="/upload">
+            <Button size="sm">
+              <span className="sm:hidden">+ New</span>
+              <span className="hidden sm:inline">+ New Study Set</span>
+            </Button>
+          </Link>
         </div>
       </header>
 

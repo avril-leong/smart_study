@@ -35,7 +35,7 @@ export function QuestionCard({ question, onAnswer, answered, correctAnswer, give
           style={{ color: 'var(--accent-cyan)' }}>
           {question.type === 'mcq' ? 'Multiple Choice' : 'Short Answer'}
         </p>
-        <p className="font-display text-2xl font-bold leading-tight">{question.question_text}</p>
+        <p className="font-display text-xl sm:text-2xl font-bold leading-tight">{question.question_text}</p>
       </div>
 
       {question.type === 'mcq' && question.options && (
