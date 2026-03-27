@@ -3,39 +3,46 @@
 @tailwind utilities;
 
 :root {
-  /* Backgrounds — warm near-black */
-  --bg-base:        #0e0b08;
-  --bg-surface:     #181310;
-  --bg-border:      #2e2318;
+  /*
+   * Jewel-tone analogous palette — Ramotion principles:
+   * 60% deep indigo-black backgrounds (dominant)
+   * 30% jewel teal primary accent (analogous — adjacent to indigo on the wheel)
+   * 10% jewel answer colours: sapphire, amber, amethyst, rose (split-complementary accents)
+   */
 
-  /* Accent — warm amber gold (replaces cold AI-cyan) */
-  --accent-cyan:    #f0a830;
-  --accent-amber:   #fbbf24;   /* Brighter yellow — used for processing state */
+  /* Backgrounds — deep indigo-black (60%) */
+  --bg-base:        #08090e;
+  --bg-surface:     #0f1020;
+  --bg-border:      #1e2040;
+
+  /* Primary accent — jewel teal (30%) */
+  --accent-cyan:    #2ec4b0;
+  --accent-amber:   #f4a636;   /* Amber — used for processing/generating state */
 
   /* Semantic */
-  --success:        #4ade80;
+  --success:        #34d399;
   --error:          #f87171;
 
   /* Text */
-  --text-primary:   #ede8d8;
-  --text-muted:     #8a7860;
-  --text-on-accent: #0e0b08;   /* Dark text for use on amber backgrounds */
+  --text-primary:   #dce8f8;   /* Cool blue-white — harmonises with indigo bg */
+  --text-muted:     #5e7aaa;   /* Indigo-muted */
+  --text-on-accent: #08090e;   /* Dark text on jewel-teal backgrounds */
 
-  /* Answer option colours */
-  --answer-a:     #60a5fa;
-  --answer-b:     #fbbf24;
-  --answer-c:     #c084fc;
-  --answer-d:     #f87171;
+  /* Answer option jewel colours */
+  --answer-a:     #60a5fa;   /* Sapphire */
+  --answer-b:     #fbbf24;   /* Amber */
+  --answer-c:     #c084fc;   /* Amethyst */
+  --answer-d:     #f472b6;   /* Rose */
 
-  /* Answer colour alpha variants — avoids fragile hex concatenation */
+  /* Answer colour alpha variants */
   --answer-a-subtle: color-mix(in srgb, #60a5fa 15%, transparent);
   --answer-a-mid:    color-mix(in srgb, #60a5fa 28%, transparent);
   --answer-b-subtle: color-mix(in srgb, #fbbf24 15%, transparent);
   --answer-b-mid:    color-mix(in srgb, #fbbf24 28%, transparent);
   --answer-c-subtle: color-mix(in srgb, #c084fc 15%, transparent);
   --answer-c-mid:    color-mix(in srgb, #c084fc 28%, transparent);
-  --answer-d-subtle: color-mix(in srgb, #f87171 15%, transparent);
-  --answer-d-mid:    color-mix(in srgb, #f87171 28%, transparent);
+  --answer-d-subtle: color-mix(in srgb, #f472b6 15%, transparent);
+  --answer-d-mid:    color-mix(in srgb, #f472b6 28%, transparent);
 }
 
 body {
