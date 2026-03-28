@@ -8,6 +8,8 @@ import type { QuestionType } from '@/types'
 import { getUserAIConfig } from '@/lib/ai/get-user-ai-config'
 import { sanitizePrompt } from '@/lib/sanitize'
 
+type GenerationStyle = 'general' | 'exam_prep'
+
 export async function POST(request: NextRequest) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -26,9 +28,9 @@ export async function POST(request: NextRequest) {
 
   const service = createServiceRoleClient()
 
-  // Verify ownership — also fetch custom_prompt and question_count_pref
+  // Verify ownership — fetch all generation preferences
   const { data: studySet } = await service.from('study_sets')
-    .select('id, user_id, generation_status, custom_prompt, question_count_pref, focus_lesson_content, question_types_pref')
+    .select('id, user_id, generation_status, custom_prompt, question_count_pref, focus_lesson_content, question_types_pref, generation_style')
     .eq('id', studySetId).single()
 
   if (!studySet || studySet.user_id !== user.id)
@@ -73,14 +75,15 @@ export async function POST(request: NextRequest) {
       throw new Error('No API key configured. Add your API key in Settings → AI Settings.')
     }
 
-    // Resolve effective custom prompt: body override > set > global > none
-    const rawCustomPrompt = bodyCustomPrompt ?? studySet.custom_prompt ?? aiConfig.globalCustomPrompt ?? null
+    // Resolve effective custom prompt: body override > set-level > none
+    const rawCustomPrompt = bodyCustomPrompt ?? studySet.custom_prompt ?? null
     const customPrompt = rawCustomPrompt ? sanitizePrompt(rawCustomPrompt, 500) : undefined
 
     const questionCount = (studySet as { question_count_pref?: number | null }).question_count_pref ?? 25
     const focusLessonContent = (studySet as { focus_lesson_content?: boolean | null }).focus_lesson_content ?? true
     const questionTypes = ((studySet as { question_types_pref?: string[] | null }).question_types_pref ?? ['mcq', 'short_answer']) as QuestionType[]
-    const questions = await generateQuestions(combinedText, studySetId, aiConfig, customPrompt, questionCount, focusLessonContent, questionTypes)
+    const generationStyle = ((studySet as { generation_style?: string | null }).generation_style ?? 'general') as GenerationStyle
+    const questions = await generateQuestions(combinedText, studySetId, aiConfig, customPrompt, questionCount, focusLessonContent, generationStyle, questionTypes)
 
     if (questions.length > 0) {
       const { error: insertError } = await service.from('questions').insert(questions)

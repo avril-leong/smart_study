@@ -6,11 +6,10 @@ import type { StudySet } from '@/types'
 
 interface Props {
   studySet: StudySet
-  globalCustomPrompt: string
   onClose: () => void
 }
 
-export function EditPromptModal({ studySet, globalCustomPrompt, onClose }: Props) {
+export function EditPromptModal({ studySet, onClose }: Props) {
   const [prompt, setPrompt] = useState(studySet.custom_prompt ?? '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -46,7 +45,7 @@ export function EditPromptModal({ studySet, globalCustomPrompt, onClose }: Props
           onChange={e => setPrompt(e.target.value)}
           rows={4}
           maxLength={500}
-          placeholder={globalCustomPrompt || "e.g. Focus on key definitions, generate harder questions"}
+          placeholder="e.g. Focus on key definitions, generate harder questions"
           className="w-full rounded-lg px-3 py-2 text-sm resize-y mb-1"
           style={{
             background: 'var(--bg-base)',

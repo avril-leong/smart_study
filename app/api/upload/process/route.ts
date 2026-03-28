@@ -52,6 +52,7 @@ export async function POST(request: NextRequest) {
     subjectId,
     customPrompt: rawCustomPrompt,
     questionTypesPref: rawQuestionTypesPref,
+    generationStyle: rawGenerationStyle,
   } = body as {
     rawStoragePath?: string
     fileName?: string
@@ -63,6 +64,7 @@ export async function POST(request: NextRequest) {
     subjectId?: string | null
     customPrompt?: string | null
     questionTypesPref?: string[]
+    generationStyle?: string
   }
 
   if (!rawStoragePath || typeof rawStoragePath !== 'string') {
@@ -116,7 +118,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid subjectId' }, { status: 400 })
   }
 
-  // 8a. Validate questionTypesPref if provided
+  // 8a. Validate generationStyle — required for new study sets
+  const VALID_GENERATION_STYLES = new Set(['general', 'exam_prep'])
+  let validatedGenerationStyle: 'general' | 'exam_prep' = 'general'
+  if (isNewStudySet) {
+    if (!rawGenerationStyle || !VALID_GENERATION_STYLES.has(rawGenerationStyle)) {
+      return NextResponse.json({ error: 'generationStyle must be "general" or "exam_prep"' }, { status: 400 })
+    }
+    validatedGenerationStyle = rawGenerationStyle as 'general' | 'exam_prep'
+  }
+
+  // 8b. Validate questionTypesPref if provided
   const ALLOWED_QUESTION_TYPES = new Set(['mcq', 'short_answer', 'multi_select'])
   let validatedQuestionTypesPref: string[] | null = null
   if (rawQuestionTypesPref !== undefined && rawQuestionTypesPref !== null) {
@@ -222,6 +234,7 @@ export async function POST(request: NextRequest) {
       subject_id: normalizedSubjectId,
       custom_prompt: sanitizedCustomPrompt,
       generation_status: 'pending',
+      generation_style: validatedGenerationStyle,
       file_name: null,
       file_type: null,
       extracted_text_path: null,

@@ -17,7 +17,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await request.json()
-  const { name, subjectId, customPrompt, questionCountPref } = body
+  const { name, subjectId, customPrompt, questionCountPref, generationStyle } = body
 
   const updates: Record<string, unknown> = {}
 
@@ -56,6 +56,12 @@ export async function PATCH(
     if (typeof body.focusLessonContent !== 'boolean')
       return NextResponse.json({ error: 'focusLessonContent must be a boolean' }, { status: 400 })
     updates.focus_lesson_content = body.focusLessonContent
+  }
+
+  if ('generationStyle' in body) {
+    if (generationStyle !== 'general' && generationStyle !== 'exam_prep')
+      return NextResponse.json({ error: 'generationStyle must be "general" or "exam_prep"' }, { status: 400 })
+    updates.generation_style = generationStyle
   }
 
   if ('questionTypesPref' in body) {

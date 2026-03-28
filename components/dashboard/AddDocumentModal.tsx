@@ -24,16 +24,12 @@ export function AddDocumentModal({ studySet, onClose, onStatusChange }: Props) {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
   const [customPrompt, setCustomPrompt] = useState(studySet.custom_prompt ?? '')
-  const [globalCustomPrompt, setGlobalCustomPrompt] = useState('')
   const [hasKey, setHasKey] = useState(false)
 
   useEffect(() => {
     window.fetch('/api/settings/ai')
       .then(r => r.json())
-      .then(d => {
-        setGlobalCustomPrompt(d.globalCustomPrompt ?? '')
-        setHasKey(d.hasKey ?? false)
-      })
+      .then(d => { setHasKey(d.hasKey ?? false) })
   }, [])
 
   async function removeDoc(docId: string) {
@@ -232,7 +228,7 @@ export function AddDocumentModal({ studySet, onClose, onStatusChange }: Props) {
                 onChange={e => setCustomPrompt(e.target.value)}
                 rows={2}
                 maxLength={500}
-                placeholder={globalCustomPrompt || "e.g. Focus on key concepts"}
+                placeholder="e.g. Focus on key concepts"
                 className="w-full rounded-lg px-3 py-2 text-sm resize-y"
                 style={{
                   background: 'var(--bg-base)',

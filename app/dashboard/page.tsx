@@ -18,13 +18,6 @@ export default function DashboardPage() {
 
   const [settingsTarget, setSettingsTarget] = useState<StudySet | null>(null)
   const [addDocTarget, setAddDocTarget] = useState<StudySet | null>(null)
-  const [globalCustomPrompt, setGlobalCustomPrompt] = useState('')
-
-  useEffect(() => {
-    window.fetch('/api/settings/ai')
-      .then(r => r.json())
-      .then(d => setGlobalCustomPrompt(d.globalCustomPrompt ?? ''))
-  }, [])
 
   const grouped = subjects.map(sub => ({
     subject: sub,
@@ -108,7 +101,6 @@ export default function DashboardPage() {
         <StudySetSettingsModal
           studySet={settingsTarget}
           subjects={subjects}
-          globalCustomPrompt={globalCustomPrompt}
           onClose={() => setSettingsTarget(null)}
           onSaved={() => {
             refresh()

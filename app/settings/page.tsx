@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import type { Subject, AIProvider } from '@/types'
-import { DEFAULT_BASE_PROMPT } from '@/lib/ai/constants'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -19,8 +18,6 @@ export default function SettingsPage() {
   const [aiModel, setAiModel] = useState('')
   const [apiKey, setApiKey] = useState('')
   const [hasKey, setHasKey] = useState(false)
-  const [basePrompt, setBasePrompt] = useState(DEFAULT_BASE_PROMPT)
-  const [globalCustomPrompt, setGlobalCustomPrompt] = useState('')
   const [aiSaving, setAiSaving] = useState(false)
   const [aiSaveMsg, setAiSaveMsg] = useState('')
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle')
@@ -41,8 +38,6 @@ export default function SettingsPage() {
         setAiProvider(d.provider ?? 'deepseek')
         setAiModel(d.model ?? '')
         setHasKey(d.hasKey ?? false)
-        setBasePrompt(d.basePrompt ?? DEFAULT_BASE_PROMPT)
-        setGlobalCustomPrompt(d.globalCustomPrompt ?? '')
       })
   }, [])
 
@@ -90,8 +85,6 @@ export default function SettingsPage() {
     const body: Record<string, string | null> = {
       provider: aiProvider,
       model: aiModel,
-      globalCustomPrompt: globalCustomPrompt.trim() || null,
-      basePrompt: basePrompt.trim() || null,
     }
     if (apiKey.trim()) body.apiKey = apiKey.trim()
     const res = await window.fetch('/api/settings/ai', {
@@ -263,72 +256,6 @@ export default function SettingsPage() {
                 </div>
               )}
             </div>
-          </div>
-
-          {/* ── Base Prompt ── */}
-          <div className="rounded-xl border p-5 space-y-3"
-            style={{ background: 'var(--bg-surface)', borderColor: 'var(--bg-border)' }}>
-            <div>
-              <h3 className="font-semibold">Question Generation Style</h3>
-              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                Write in plain English — this controls how the AI crafts your questions: style, difficulty, question type mix.
-                The JSON format is handled automatically. You can reset to the recommended default at any time.
-              </p>
-            </div>
-            <textarea
-              value={basePrompt}
-              onChange={e => setBasePrompt(e.target.value)}
-              rows={4}
-              maxLength={1000}
-              className="w-full rounded-lg px-3 py-2 text-sm resize-y"
-              style={{
-                background: 'var(--bg-base)',
-                border: '1px solid var(--bg-border)',
-                color: 'var(--text-primary)',
-                fontFamily: 'inherit',
-              }}
-            />
-            <div className="flex items-center justify-between">
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                {basePrompt.length} / 1000
-              </span>
-              <button
-                type="button"
-                onClick={() => setBasePrompt(DEFAULT_BASE_PROMPT)}
-                className="text-xs underline"
-                style={{ color: 'var(--text-muted)' }}>
-                Reset to default
-              </button>
-            </div>
-          </div>
-
-          {/* ── Global Custom Instructions ── */}
-          <div className="rounded-xl border p-5 space-y-3"
-            style={{ background: 'var(--bg-surface)', borderColor: 'var(--bg-border)' }}>
-            <div>
-              <h3 className="font-semibold">Default Custom Instructions <span className="font-normal text-sm" style={{ color: 'var(--text-muted)' }}>(optional)</span></h3>
-              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                Extra context added to every study set unless the set has its own instructions.
-                Example: <em>&quot;Focus on definitions and key terms&quot;</em> or <em>&quot;Generate harder application-level questions&quot;</em>.
-              </p>
-            </div>
-            <textarea
-              value={globalCustomPrompt}
-              onChange={e => setGlobalCustomPrompt(e.target.value)}
-              rows={3}
-              maxLength={500}
-              placeholder="e.g. Focus on key dates and figures"
-              className="w-full rounded-lg px-3 py-2 text-sm resize-y"
-              style={{
-                background: 'var(--bg-base)',
-                border: '1px solid var(--bg-border)',
-                color: 'var(--text-primary)',
-                fontFamily: 'inherit',
-              }}
-            />
-            <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>
-              {globalCustomPrompt.length} / 500
-            </span>
           </div>
 
           {/* Save button */}

@@ -7,8 +7,6 @@ export interface AIConfig {
   provider: AIProvider
   apiKey: string        // decrypted, server-side only — never returned to client
   model: string         // resolved: user value or provider default if empty
-  basePrompt: string    // resolved: user value or DEFAULT_BASE_PROMPT if null
-  globalCustomPrompt: string | null
 }
 
 export interface Subject {
@@ -44,8 +42,9 @@ export interface StudySet {
   question_count?: number
   subject?: Subject | null
   documents: StudySetDocument[]       // always populated by useStudySets
-  custom_prompt?: string | null       // per-set instruction; NULL = use global default
+  custom_prompt?: string | null       // per-set instruction
   question_count_pref?: number | null // 10 | 25 | 50; NULL = use default (25)
+  generation_style?: 'general' | 'exam_prep' // required on creation; defaults to 'general' for existing rows
   focus_lesson_content?: boolean      // filter out administrative/non-lesson content during generation
   question_types_pref?: QuestionType[] // which question types to generate; default ['mcq','short_answer']
   mastery?: number                    // 0–100, computed: correctly-answered-once / total

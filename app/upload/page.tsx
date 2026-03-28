@@ -22,8 +22,8 @@ export default function UploadPage() {
   const [error, setError] = useState('')
   const [questionCount, setQuestionCount] = useState(0)
   const [customPrompt, setCustomPrompt] = useState('')
-  const [globalCustomPrompt, setGlobalCustomPrompt] = useState('')
   const [questionTypesPref, setQuestionTypesPref] = useState<QuestionType[]>(['mcq', 'short_answer'])
+  const [generationStyle, setGenerationStyle] = useState<'general' | 'exam_prep' | null>(null)
   const [hasKey, setHasKey] = useState(false)
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -36,12 +36,7 @@ export default function UploadPage() {
       .then(({ data }) => { if (data) setSubjects(data) })
     window.fetch('/api/settings/ai')
       .then(r => r.json())
-      .then(d => {
-        const g = d.globalCustomPrompt ?? ''
-        setGlobalCustomPrompt(g)
-        setCustomPrompt(g)
-        setHasKey(d.hasKey ?? false)
-      })
+      .then(d => { setHasKey(d.hasKey ?? false) })
   }, [])
 
   function addFiles(incoming: File[]) {
@@ -64,6 +59,10 @@ export default function UploadPage() {
     if (files.length === 0) return
     if (!hasKey) {
       setError('No API key configured. Go to Settings → AI Settings to add your key before generating questions.')
+      return
+    }
+    if (!generationStyle) {
+      setError('Please select a generation style before uploading.')
       return
     }
     setError('')
@@ -119,6 +118,7 @@ export default function UploadPage() {
         subjectId: subjectId || null,
         customPrompt: customPrompt.trim() || null,
         questionTypesPref: questionTypesPref,
+        generationStyle,
       }),
     })
     if (!procRes0.ok) {
@@ -266,6 +266,35 @@ export default function UploadPage() {
 
           {files.length > 0 && (
             <>
+              {/* Generation style — required */}
+              <div>
+                <label className="block text-sm font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>
+                  Generation Style <span style={{ color: 'var(--error)' }}>*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  {([
+                    { value: 'general', label: 'General', description: 'Broad understanding across topics' },
+                    { value: 'exam_prep', label: 'Exam Prep', description: 'Exam-style rigour, Bloom\'s taxonomy' },
+                  ] as const).map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setGenerationStyle(opt.value)}
+                      className="text-left rounded-xl p-4 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-cyan)]"
+                      style={{
+                        background: generationStyle === opt.value
+                          ? 'color-mix(in srgb, var(--accent-cyan) 12%, transparent)'
+                          : 'var(--bg-surface)',
+                        border: `2px solid ${generationStyle === opt.value ? 'var(--accent-cyan)' : 'var(--bg-border)'}`,
+                      }}
+                    >
+                      <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{opt.label}</p>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{opt.description}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>
                   Study Set Name
@@ -283,7 +312,7 @@ export default function UploadPage() {
                   onChange={e => setCustomPrompt(e.target.value)}
                   rows={3}
                   maxLength={500}
-                  placeholder={globalCustomPrompt || "e.g. 'Focus on key dates and figures', 'Generate harder application questions'"}
+                  placeholder="e.g. 'Focus on key dates and figures', 'Generate harder application questions'"
                   disabled={stage === 'uploading'}
                   className="w-full rounded-lg px-3 py-2 text-sm resize-y"
                   style={{
@@ -310,7 +339,7 @@ export default function UploadPage() {
               </div>
               {error && <p className="text-sm" style={{ color: 'var(--error)' }}>{error}</p>}
               <Button type="submit"
-                disabled={stage === 'uploading' || files.length === 0 || !name.trim()}
+                disabled={stage === 'uploading' || files.length === 0 || !name.trim() || !generationStyle}
                 className="w-full">
                 {stage === 'uploading' ? 'Uploading…' : 'Upload & Generate Questions'}
               </Button>

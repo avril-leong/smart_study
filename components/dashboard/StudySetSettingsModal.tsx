@@ -6,7 +6,6 @@ import { QuestionTypesPicker } from '@/components/ui/QuestionTypesPicker'
 interface Props {
   studySet: StudySet
   subjects: Subject[]
-  globalCustomPrompt: string
   onClose: () => void
   onSaved: (updated: Partial<StudySet>) => void
   onDelete: () => void
@@ -17,7 +16,7 @@ interface Props {
 const QUESTION_COUNTS = [10, 25, 50] as const
 
 export function StudySetSettingsModal({
-  studySet, subjects, globalCustomPrompt,
+  studySet, subjects,
   onClose, onSaved, onDelete, onRefresh, onAddDocument,
 }: Props) {
   const [name, setName] = useState(studySet.name)
@@ -30,6 +29,9 @@ export function StudySetSettingsModal({
   const [focusLessonContent, setFocusLessonContent] = useState(studySet.focus_lesson_content ?? true)
   const [questionTypesPref, setQuestionTypesPref] = useState<QuestionType[]>(
     studySet.question_types_pref ?? ['mcq', 'short_answer']
+  )
+  const [generationStyle, setGenerationStyle] = useState<'general' | 'exam_prep'>(
+    studySet.generation_style ?? 'general'
   )
 
   // Escape key + body scroll lock
@@ -56,6 +58,7 @@ export function StudySetSettingsModal({
         customPrompt: prompt.trim() || null,
         questionCountPref: questionCount,
         focusLessonContent,
+        generationStyle,
         questionTypesPref: questionTypesPref,
       }),
     })
@@ -69,6 +72,7 @@ export function StudySetSettingsModal({
         custom_prompt: prompt.trim() || null,
         question_count_pref: questionCount,
         focus_lesson_content: focusLessonContent,
+        generation_style: generationStyle,
         question_types_pref: questionTypesPref,
       })
     }
@@ -161,7 +165,7 @@ export function StudySetSettingsModal({
               onChange={e => setPrompt(e.target.value)}
               rows={3}
               maxLength={500}
-              placeholder={globalCustomPrompt || 'e.g. Focus on key definitions, generate harder questions'}
+              placeholder="e.g. Focus on key definitions, generate harder questions"
               className="w-full rounded-lg px-3 py-2 text-sm resize-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-cyan)]"
               style={{
                 background: 'var(--bg-base)',
@@ -210,6 +214,37 @@ export function StudySetSettingsModal({
             <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>
               The AI will attempt to skip administrative content such as deadlines and course schedules. Results may not be perfect.
             </p>
+          </div>
+
+          {/* Generation style */}
+          <div>
+            <p className="block text-xs font-semibold uppercase tracking-widest mb-2"
+              style={{ color: 'var(--text-muted)' }}>Generation Style</p>
+            <div
+              className="flex rounded-lg overflow-hidden"
+              style={{ border: '1px solid var(--bg-border)' }}
+              role="group"
+              aria-label="Generation style"
+            >
+              {([
+                { value: 'general', label: 'General' },
+                { value: 'exam_prep', label: 'Exam Prep' },
+              ] as const).map((opt, i) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setGenerationStyle(opt.value)}
+                  aria-pressed={generationStyle === opt.value}
+                  className="flex-1 py-3 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[var(--accent-cyan)]"
+                  style={{
+                    background: generationStyle === opt.value ? 'var(--accent-cyan)' : 'var(--bg-base)',
+                    color: generationStyle === opt.value ? 'var(--text-on-accent)' : 'var(--text-muted)',
+                    borderRight: i === 0 ? '1px solid var(--bg-border)' : 'none',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Question count */}
