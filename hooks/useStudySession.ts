@@ -43,7 +43,7 @@ export function useStudySession(studySetId: string, practice = false) {
     } else if (question.type === 'multi_select') {
       const correctSet = new Set(question.correct_answer.split(',').map(s => s.trim()))
       const givenSet = new Set(answer.split(',').map(s => s.trim()))
-      isCorrect = correctSet.size === givenSet.size && [...correctSet].every(l => givenSet.has(l))
+      isCorrect = correctSet.size === givenSet.size && Array.from(correctSet).every(l => givenSet.has(l))
     } else {
       isCorrect = gradeShortAnswer(answer, question.correct_answer)
     }
