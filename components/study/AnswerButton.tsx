@@ -9,7 +9,7 @@ const LABELS  = ['A', 'B', 'C', 'D']
 interface Props {
   index: number
   text: string
-  state: 'idle' | 'correct' | 'wrong' | 'reveal'
+  state: 'idle' | 'selected' | 'correct' | 'wrong' | 'reveal'
   onClick: () => void
   disabled: boolean
 }
@@ -17,12 +17,13 @@ interface Props {
 export function AnswerButton({ index, text, state, onClick, disabled }: Props) {
   const prefersReducedMotion = useReducedMotion()
   const color = COLORS[index]
-  const bg = state === 'correct' ? 'var(--success)'
-           : state === 'wrong'   ? 'var(--error)'
-           : state === 'reveal'  ? MID[index]
+  const bg = state === 'correct'  ? 'var(--success)'
+           : state === 'wrong'    ? 'var(--error)'
+           : state === 'reveal'   ? MID[index]
+           : state === 'selected' ? MID[index]
            : SUBTLE[index]
-  const border = state === 'correct' ? 'var(--success)'
-               : state === 'wrong'   ? 'var(--error)'
+  const border = state === 'correct'  ? 'var(--success)'
+               : state === 'wrong'    ? 'var(--error)'
                : color
 
   return (

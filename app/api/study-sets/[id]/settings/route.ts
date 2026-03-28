@@ -58,6 +58,16 @@ export async function PATCH(
     updates.focus_lesson_content = body.focusLessonContent
   }
 
+  if ('questionTypesPref' in body) {
+    const allowed = new Set(['mcq', 'short_answer', 'multi_select'])
+    const val = body.questionTypesPref
+    if (!Array.isArray(val) || val.length === 0)
+      return NextResponse.json({ error: 'questionTypesPref must be a non-empty array' }, { status: 400 })
+    if (!val.every((v: unknown) => typeof v === 'string' && allowed.has(v)))
+      return NextResponse.json({ error: 'questionTypesPref contains an invalid type' }, { status: 400 })
+    updates.question_types_pref = val
+  }
+
   if (Object.keys(updates).length === 0)
     return NextResponse.json({ ok: true })
 

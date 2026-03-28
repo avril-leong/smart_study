@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { Input } from '@/components/ui/Input'
 import { createClient } from '@/lib/supabase/client'
-import type { Subject } from '@/types'
+import { QuestionTypesPicker } from '@/components/ui/QuestionTypesPicker'
+import type { Subject, QuestionType } from '@/types'
 
 type Stage = 'idle' | 'uploading' | 'generating' | 'done' | 'error'
 
@@ -22,6 +23,7 @@ export default function UploadPage() {
   const [questionCount, setQuestionCount] = useState(0)
   const [customPrompt, setCustomPrompt] = useState('')
   const [globalCustomPrompt, setGlobalCustomPrompt] = useState('')
+  const [questionTypesPref, setQuestionTypesPref] = useState<QuestionType[]>(['mcq', 'short_answer'])
   const [hasKey, setHasKey] = useState(false)
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -116,6 +118,7 @@ export default function UploadPage() {
         name,
         subjectId: subjectId || null,
         customPrompt: customPrompt.trim() || null,
+        questionTypesPref: questionTypesPref,
       }),
     })
     if (!procRes0.ok) {
@@ -294,6 +297,16 @@ export default function UploadPage() {
                 <span className="block text-xs mt-1 text-right" style={{ color: 'var(--text-muted)' }}>
                   {customPrompt.length} / 500
                 </span>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>
+                  Question Types
+                </label>
+                <QuestionTypesPicker
+                  value={questionTypesPref}
+                  onChange={setQuestionTypesPref}
+                  disabled={stage === 'uploading'}
+                />
               </div>
               {error && <p className="text-sm" style={{ color: 'var(--error)' }}>{error}</p>}
               <Button type="submit"

@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
-import type { StudySet, Subject } from '@/types'
+import type { StudySet, Subject, QuestionType } from '@/types'
+import { QuestionTypesPicker } from '@/components/ui/QuestionTypesPicker'
 
 interface Props {
   studySet: StudySet
@@ -27,6 +28,9 @@ export function StudySetSettingsModal({
   const [error, setError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [focusLessonContent, setFocusLessonContent] = useState(studySet.focus_lesson_content ?? true)
+  const [questionTypesPref, setQuestionTypesPref] = useState<QuestionType[]>(
+    studySet.question_types_pref ?? ['mcq', 'short_answer']
+  )
 
   // Escape key + body scroll lock
   useEffect(() => {
@@ -52,6 +56,7 @@ export function StudySetSettingsModal({
         customPrompt: prompt.trim() || null,
         questionCountPref: questionCount,
         focusLessonContent,
+        questionTypesPref: questionTypesPref,
       }),
     })
     if (!res.ok) {
@@ -64,6 +69,7 @@ export function StudySetSettingsModal({
         custom_prompt: prompt.trim() || null,
         question_count_pref: questionCount,
         focus_lesson_content: focusLessonContent,
+        question_types_pref: questionTypesPref,
       })
     }
     setSaving(false)
@@ -232,6 +238,13 @@ export function StudySetSettingsModal({
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Question types */}
+          <div>
+            <p className="block text-xs font-semibold uppercase tracking-widest mb-2"
+              style={{ color: 'var(--text-muted)' }}>Question Types</p>
+            <QuestionTypesPicker value={questionTypesPref} onChange={setQuestionTypesPref} />
           </div>
 
           <div style={{ borderTop: '1px solid var(--bg-border)' }} />

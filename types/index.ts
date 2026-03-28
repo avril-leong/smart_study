@@ -1,5 +1,5 @@
 export type GenerationStatus = 'pending' | 'processing' | 'done' | 'error'
-export type QuestionType = 'mcq' | 'short_answer'
+export type QuestionType = 'mcq' | 'short_answer' | 'multi_select'
 
 export type AIProvider = 'openai' | 'deepseek' | 'openrouter'
 
@@ -47,6 +47,7 @@ export interface StudySet {
   custom_prompt?: string | null       // per-set instruction; NULL = use global default
   question_count_pref?: number | null // 10 | 25 | 50; NULL = use default (25)
   focus_lesson_content?: boolean      // filter out administrative/non-lesson content during generation
+  question_types_pref?: QuestionType[] // which question types to generate; default ['mcq','short_answer']
   mastery?: number                    // 0–100, computed: correctly-answered-once / total
 }
 

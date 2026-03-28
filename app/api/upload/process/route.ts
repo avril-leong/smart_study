@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
     name: rawName,
     subjectId,
     customPrompt: rawCustomPrompt,
+    questionTypesPref: rawQuestionTypesPref,
   } = body as {
     rawStoragePath?: string
     fileName?: string
@@ -61,6 +62,7 @@ export async function POST(request: NextRequest) {
     name?: string
     subjectId?: string | null
     customPrompt?: string | null
+    questionTypesPref?: string[]
   }
 
   if (!rawStoragePath || typeof rawStoragePath !== 'string') {
@@ -112,6 +114,19 @@ export async function POST(request: NextRequest) {
   const normalizedSubjectId = subjectId || null
   if (normalizedSubjectId != null && !UUID_V4_RE.test(normalizedSubjectId)) {
     return NextResponse.json({ error: 'Invalid subjectId' }, { status: 400 })
+  }
+
+  // 8a. Validate questionTypesPref if provided
+  const ALLOWED_QUESTION_TYPES = new Set(['mcq', 'short_answer', 'multi_select'])
+  let validatedQuestionTypesPref: string[] | null = null
+  if (rawQuestionTypesPref !== undefined && rawQuestionTypesPref !== null) {
+    if (!Array.isArray(rawQuestionTypesPref) || rawQuestionTypesPref.length === 0) {
+      return NextResponse.json({ error: 'questionTypesPref must be a non-empty array' }, { status: 400 })
+    }
+    if (!rawQuestionTypesPref.every((v: unknown) => typeof v === 'string' && ALLOWED_QUESTION_TYPES.has(v))) {
+      return NextResponse.json({ error: 'questionTypesPref contains an invalid type' }, { status: 400 })
+    }
+    validatedQuestionTypesPref = rawQuestionTypesPref as string[]
   }
 
   // 8. Sanitize customPrompt if provided
@@ -210,6 +225,7 @@ export async function POST(request: NextRequest) {
       file_name: null,
       file_type: null,
       extracted_text_path: null,
+      ...(validatedQuestionTypesPref ? { question_types_pref: validatedQuestionTypesPref } : {}),
     })
     if (setError) {
       if (setError.code === '23505') {

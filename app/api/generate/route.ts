@@ -4,6 +4,7 @@ export const maxDuration = 300 // 5 minutes — Pro plan; free plan is capped at
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { generateQuestions } from '@/lib/ai/generate-questions'
+import type { QuestionType } from '@/types'
 import { getUserAIConfig } from '@/lib/ai/get-user-ai-config'
 import { sanitizePrompt } from '@/lib/sanitize'
 
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
 
   // Verify ownership — also fetch custom_prompt and question_count_pref
   const { data: studySet } = await service.from('study_sets')
-    .select('id, user_id, generation_status, custom_prompt, question_count_pref, focus_lesson_content')
+    .select('id, user_id, generation_status, custom_prompt, question_count_pref, focus_lesson_content, question_types_pref')
     .eq('id', studySetId).single()
 
   if (!studySet || studySet.user_id !== user.id)
@@ -78,7 +79,8 @@ export async function POST(request: NextRequest) {
 
     const questionCount = (studySet as { question_count_pref?: number | null }).question_count_pref ?? 25
     const focusLessonContent = (studySet as { focus_lesson_content?: boolean | null }).focus_lesson_content ?? true
-    const questions = await generateQuestions(combinedText, studySetId, aiConfig, customPrompt, questionCount, focusLessonContent)
+    const questionTypes = ((studySet as { question_types_pref?: string[] | null }).question_types_pref ?? ['mcq', 'short_answer']) as QuestionType[]
+    const questions = await generateQuestions(combinedText, studySetId, aiConfig, customPrompt, questionCount, focusLessonContent, questionTypes)
 
     if (questions.length > 0) {
       const { error: insertError } = await service.from('questions').insert(questions)

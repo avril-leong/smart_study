@@ -37,11 +37,18 @@ export function useStudySession(studySetId: string, practice = false) {
     const question = questionRef.current
     if (!question) return
 
-    const isCorrect = question.type === 'mcq'
-      ? answer === question.correct_answer
-      : gradeShortAnswer(answer, question.correct_answer)
+    let isCorrect: boolean
+    if (question.type === 'mcq') {
+      isCorrect = answer === question.correct_answer
+    } else if (question.type === 'multi_select') {
+      const correctSet = new Set(question.correct_answer.split(',').map(s => s.trim()))
+      const givenSet = new Set(answer.split(',').map(s => s.trim()))
+      isCorrect = correctSet.size === givenSet.size && [...correctSet].every(l => givenSet.has(l))
+    } else {
+      isCorrect = gradeShortAnswer(answer, question.correct_answer)
+    }
 
-    const smQuality = question.type === 'mcq' && isCorrect ? 5 : isCorrect ? 4 : 1
+    const smQuality = question.type !== 'short_answer' && isCorrect ? 5 : isCorrect ? 4 : 1
 
     setState(s => ({
       ...s, answered: true, givenAnswer: answer, isCorrect,
