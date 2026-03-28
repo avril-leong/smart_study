@@ -23,6 +23,14 @@ ALTER TABLE study_sets
 - The app enforces an explicit choice on all new study sets — the upload page blocks submission until one is selected.
 - Values: `'general'` | `'exam_prep'`.
 
+Add `generation_style` to the `StudySet` TypeScript interface in `types/index.ts`:
+
+```ts
+generation_style: 'general' | 'exam_prep'
+```
+
+Remove `basePrompt` and `globalCustomPrompt` from the `AIConfig` interface in `types/index.ts`.
+
 ---
 
 ## System Prompt Design
@@ -48,7 +56,9 @@ Generate exam-style questions that mirror the rigour of formal assessments.
 ```
 
 ### Composition
-`buildSystemPrompt(focusLessonContent, generationStyle)` returns:
+The existing `BASE_SYSTEM_PROMPT` constant is renamed to `BASE_FORMAT_RULES` — its content (JSON format rules and per-type instructions) is unchanged.
+
+`buildSystemPrompt(focusLessonContent: boolean, generationStyle: 'general' | 'exam_prep')` returns:
 
 ```
 BASE_FORMAT_RULES
@@ -56,14 +66,79 @@ BASE_FORMAT_RULES
 + FOCUS_INSTRUCTION                              (if focusLessonContent = true)
 ```
 
-### DEFAULT_BASE_PROMPT simplification
-`lib/ai/constants.ts` simplifies to:
+If `generationStyle` is `undefined` at the call site in `generateFromChunk` or `generateQuestions`, default to `'general'` before passing to `buildSystemPrompt`.
+
+### User message construction
+`DEFAULT_BASE_PROMPT` in `lib/ai/constants.ts` simplifies to:
 
 ```
 Generate {n} quiz questions from the following text.
 ```
 
-The old distribution guidance (`70% multiple choice, 30% short answer`) is removed — question types are now user-controlled.
+`generateFromChunk` uses this constant directly (not via `aiConfig.basePrompt`):
+
+```ts
+const userMessage = [
+  DEFAULT_BASE_PROMPT.replace('{n}', String(n)),
+  `Use only these question types: ${typeList}.`,
+  '',
+  'Text:',
+  chunk,
+  customPrompt ? `\n\nAdditional focus: ${customPrompt}` : '',
+].filter(Boolean).join('\n')
+```
+
+`aiConfig.basePrompt` is removed entirely — `generateFromChunk` and `generateQuestions` no longer receive it.
+
+### Updated function signatures
+
+```ts
+// generate-questions.ts
+function generateFromChunk(
+  chunk: string,
+  studySetId: string,
+  n: number,
+  aiConfig: AIConfig,
+  customPrompt?: string,
+  focusLessonContent?: boolean,
+  generationStyle?: 'general' | 'exam_prep',
+  questionTypes?: QuestionType[],
+  retries?: number
+): Promise<...>
+
+export async function generateQuestions(
+  text: string,
+  studySetId: string,
+  aiConfig: AIConfig,
+  customPrompt?: string,
+  questionCount?: number,
+  focusLessonContent?: boolean,
+  generationStyle?: 'general' | 'exam_prep',
+  questionTypes?: QuestionType[]
+): Promise<...>
+```
+
+---
+
+## API Changes
+
+### `POST /api/upload/process`
+- New required field: `generationStyle: 'general' | 'exam_prep'`
+- Returns 400 if missing or invalid.
+- Stored in `study_sets` INSERT.
+
+### `PATCH /api/study-sets/[id]/settings`
+- New optional field: `generationStyle: 'general' | 'exam_prep'`
+- Validated and written to `generation_style` column.
+
+### `POST /api/generate`
+- Reads `generation_style` from the study set row (add to `.select(...)` query).
+- Custom prompt resolution chain simplified to: `bodyCustomPrompt ?? studySet.custom_prompt ?? null` — `aiConfig.globalCustomPrompt` removed.
+- Passes `generationStyle` to `generateQuestions(...)`.
+
+### `GET /POST /api/settings/ai`
+- `GET`: stop returning `basePrompt` and `globalCustomPrompt` in the response.
+- `POST`: silently ignore `basePrompt` and `globalCustomPrompt` fields if sent — do not write them to the DB. Existing DB values are left intact but never used.
 
 ---
 
@@ -74,31 +149,17 @@ The old distribution guidance (`70% multiple choice, 30% short answer`) is remov
 - Cards show label + one-line description:
   - **General** — "Broad understanding across topics"
   - **Exam Prep** — "Exam-style rigour, Bloom's taxonomy"
+- Remove `globalCustomPrompt` pre-population of the custom instructions textarea — the field starts empty (the global prompt concept is deprecated).
+- Remove the `globalCustomPrompt` fetch/state from the upload page entirely.
 
 ### Study set settings modal
-- 2-option segmented control (same pattern as question count) allowing users to switch style after creation.
+- 2-option segmented control for generation style, placed **directly above** the question count control (both are generation-behaviour settings and should be grouped together).
+- UI order in modal body: Name → Subject → (divider) → Custom Instructions → Focus lesson content → **Generation Style** → Question count → Question types → (divider) → document/regenerate actions → Delete.
+- Remove the `globalCustomPrompt` prop from `StudySetSettingsModal`. The custom instructions textarea placeholder falls back to a static hint string.
 
 ### AI Settings page
-- Remove the `base_prompt` field from the UI — existing DB values are ignored by the generate route.
-- Remove the `global_custom_prompt` field from the UI — custom instructions now live only on individual study sets.
-
----
-
-## API Changes
-
-### `POST /api/upload/process`
-- New required field: `generationStyle: 'general' | 'exam_prep'`
-- Validated server-side; returns 400 if missing or invalid.
-- Stored in `study_sets` INSERT.
-
-### `PATCH /api/study-sets/[id]/settings`
-- New optional field: `generationStyle: 'general' | 'exam_prep'`
-- Validated and applied to `generation_style` column.
-
-### `POST /api/generate`
-- Reads `generation_style` from the study set row.
-- Passes to `buildSystemPrompt(focusLessonContent, generationStyle)`.
-- `getUserAIConfig` no longer reads or returns `base_prompt` or `globalCustomPrompt` — both removed from `AIConfig` type and all call sites.
+- Remove the base prompt field from the UI entirely.
+- Remove the global custom instructions field from the UI entirely.
 
 ---
 
@@ -106,10 +167,14 @@ The old distribution guidance (`70% multiple choice, 30% short answer`) is remov
 
 | Item | Action |
 |------|--------|
-| `AIConfig.globalCustomPrompt` | Remove from type and all usages |
-| `AIConfig.basePrompt` | Remove from type; `DEFAULT_BASE_PROMPT` simplified to `{n}` line only |
-| `user_ai_settings.base_prompt` | Stop reading — existing DB column left intact, no migration needed |
+| `AIConfig.globalCustomPrompt` | Remove from type; remove from all call sites |
+| `AIConfig.basePrompt` | Remove from type; `generateFromChunk` uses `DEFAULT_BASE_PROMPT` directly |
+| `getUserAIConfig` return value | Remove `basePrompt` and `globalCustomPrompt` fields |
+| `user_ai_settings.base_prompt` | Stop reading — existing DB column left intact |
 | `user_ai_settings.global_custom_prompt` | Stop reading — existing DB column left intact |
+| `generate route` custom prompt chain | Remove `?? aiConfig.globalCustomPrompt` |
+| `upload/page.tsx` | Remove `globalCustomPrompt` state, fetch, and textarea pre-population |
+| `StudySetSettingsModal` | Remove `globalCustomPrompt` prop |
 | AI Settings UI | Remove base prompt + global custom instructions fields |
 
 ---
@@ -117,12 +182,13 @@ The old distribution guidance (`70% multiple choice, 30% short answer`) is remov
 ## Files Affected
 
 - `lib/ai/constants.ts` — simplify `DEFAULT_BASE_PROMPT`
-- `lib/ai/generate-questions.ts` — new prompt variants, updated `buildSystemPrompt` signature
+- `lib/ai/generate-questions.ts` — new prompt variants, updated signatures, use constant directly
 - `lib/ai/get-user-ai-config.ts` — remove `basePrompt` and `globalCustomPrompt` from return
-- `types/index.ts` — remove `basePrompt` and `globalCustomPrompt` from `AIConfig`
-- `app/api/generate/route.ts` — pass `generationStyle` to `buildSystemPrompt`
+- `types/index.ts` — remove `basePrompt`/`globalCustomPrompt` from `AIConfig`; add `generation_style` to `StudySet`
+- `app/api/generate/route.ts` — thread `generationStyle`; simplify custom prompt chain
 - `app/api/upload/process/route.ts` — require and store `generationStyle`
 - `app/api/study-sets/[id]/settings/route.ts` — accept `generationStyle` PATCH
-- `app/upload/page.tsx` — required choice cards UI
-- `components/dashboard/StudySetSettingsModal.tsx` — segmented control for style
-- `app/settings/page.tsx` (or equivalent) — remove base prompt + global custom instructions fields
+- `app/api/settings/ai/route.ts` — stop returning/writing `basePrompt` and `globalCustomPrompt`
+- `app/upload/page.tsx` — required choice cards; remove `globalCustomPrompt` usage
+- `components/dashboard/StudySetSettingsModal.tsx` — segmented control; remove `globalCustomPrompt` prop; reorder controls
+- `app/settings/page.tsx` (AI Settings) — remove base prompt + global custom instructions fields
