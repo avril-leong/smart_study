@@ -25,15 +25,16 @@ export async function middleware(request: NextRequest) {
     }
   )
 
+  const isAuthPage = /^\/(login|register)/.test(request.nextUrl.pathname)
+
   let user = null
   try {
     const { data } = await supabase.auth.getUser()
     user = data.user
   } catch {
-    return response
+    // Fail closed: treat an auth-check error the same as "unauthenticated".
+    return isAuthPage ? response : NextResponse.redirect(new URL('/login', request.url))
   }
-
-  const isAuthPage = /^\/(login|register)/.test(request.nextUrl.pathname)
 
   if (!user && !isAuthPage) {
     return NextResponse.redirect(new URL('/login', request.url))

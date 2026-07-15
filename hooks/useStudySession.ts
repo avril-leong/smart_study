@@ -1,6 +1,6 @@
 'use client'
 import { useState, useCallback, useRef } from 'react'
-import { gradeShortAnswer } from '@/lib/ai/grade-short-answer'
+import { gradeAnswer } from '@/lib/ai/grade-answer'
 import type { Question } from '@/types'
 
 interface SessionState {
@@ -37,18 +37,7 @@ export function useStudySession(studySetId: string, practice = false) {
     const question = questionRef.current
     if (!question) return
 
-    let isCorrect: boolean
-    if (question.type === 'mcq') {
-      isCorrect = answer === question.correct_answer
-    } else if (question.type === 'multi_select') {
-      const correctSet = new Set(question.correct_answer.split(',').map(s => s.trim()))
-      const givenSet = new Set(answer.split(',').map(s => s.trim()))
-      isCorrect = correctSet.size === givenSet.size && Array.from(correctSet).every(l => givenSet.has(l))
-    } else {
-      isCorrect = gradeShortAnswer(answer, question.correct_answer)
-    }
-
-    const smQuality = question.type !== 'short_answer' && isCorrect ? 5 : isCorrect ? 4 : 1
+    const isCorrect = gradeAnswer(question, answer)
 
     setState(s => ({
       ...s, answered: true, givenAnswer: answer, isCorrect,
@@ -59,7 +48,7 @@ export function useStudySession(studySetId: string, practice = false) {
     const [, feedbackRes] = await Promise.all([
       fetch('/api/session/answer', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questionId: question.id, answerGiven: answer, isCorrect, smQuality }),
+        body: JSON.stringify({ questionId: question.id, answerGiven: answer }),
       }),
       fetch('/api/feedback', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },

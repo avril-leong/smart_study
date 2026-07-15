@@ -38,6 +38,6 @@ export async function getUserAIConfig(
     return { provider, apiKey, model }
   } catch (err) {
     console.warn('[getUserAIConfig] Decryption failed:', err)
-    return { provider, apiKey: '', model }
+    return { provider, apiKey: '', model, keyDecryptionFailed: true }
   }
 }

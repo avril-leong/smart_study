@@ -13,6 +13,16 @@ const INJECTION_PATTERNS = [
 ]
 
 /**
+ * Strips control characters (except \n and \t) from arbitrary text.
+ * Safe to apply to any text (never throws) — use this for content that should be
+ * normalized but not rejected, e.g. extracted document text fed to an LLM.
+ */
+export function stripControlChars(input: string): string {
+  // eslint-disable-next-line no-control-regex
+  return input.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '')
+}
+
+/**
  * Sanitizes user-supplied prompt text.
  * - Trims whitespace
  * - Strips control characters (except \n and \t)
@@ -20,10 +30,7 @@ const INJECTION_PATTERNS = [
  * - Throws ValidationError if input contains prompt injection patterns
  */
 export function sanitizePrompt(input: string, maxLength: number): string {
-  // Strip control chars except newline (\n = 0x0A) and tab (\t = 0x09); also strip DEL
-  // eslint-disable-next-line no-control-regex
-  const stripped = input.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '')
-  const trimmed = stripped.trim()
+  const trimmed = stripControlChars(input).trim()
 
   for (const pattern of INJECTION_PATTERNS) {
     if (pattern.test(trimmed)) {

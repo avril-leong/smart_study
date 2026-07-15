@@ -7,6 +7,7 @@ export interface AIConfig {
   provider: AIProvider
   apiKey: string        // decrypted, server-side only — never returned to client
   model: string         // resolved: user value or provider default if empty
+  keyDecryptionFailed?: boolean // true if a stored key exists but failed to decrypt (distinct from "no key configured")
 }
 
 export interface Subject {

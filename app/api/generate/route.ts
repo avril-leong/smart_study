@@ -7,6 +7,7 @@ import { generateQuestions } from '@/lib/ai/generate-questions'
 import type { QuestionType } from '@/types'
 import { getUserAIConfig } from '@/lib/ai/get-user-ai-config'
 import { sanitizePrompt } from '@/lib/sanitize'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 type GenerationStyle = 'general' | 'exam_prep'
 
@@ -14,6 +15,13 @@ export async function POST(request: NextRequest) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  if (!checkRateLimit(`generate:${user.id}`, 5, 5 * 60_000)) {
+    return NextResponse.json(
+      { error: 'Too many generation requests. Please wait a few minutes and try again.' },
+      { status: 429 }
+    )
+  }
 
   const { studySetId, mode = 'regenerate', documentIds, customPrompt: bodyCustomPrompt } = await request.json()
   if (!studySetId) return NextResponse.json({ error: 'Missing studySetId' }, { status: 400 })
@@ -72,7 +80,11 @@ export async function POST(request: NextRequest) {
     // Resolve AI config (BYOK only)
     const aiConfig = await getUserAIConfig(user.id, service)
     if (!aiConfig.apiKey) {
-      throw new Error('No API key configured. Add your API key in Settings → AI Settings.')
+      throw new Error(
+        aiConfig.keyDecryptionFailed
+          ? 'Your stored API key could not be decrypted — please re-enter it in Settings → AI Settings.'
+          : 'No API key configured. Add your API key in Settings → AI Settings.'
+      )
     }
 
     // Resolve effective custom prompt: body override > set-level > none
@@ -97,7 +109,8 @@ export async function POST(request: NextRequest) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     console.error('[generate] failed for studySetId:', studySetId, '—', message, err)
     // 502 if AI provider rejected the key
-    const isProviderRejection = message.toLowerCase().includes('401') || message.toLowerCase().includes('403')
+    const status = (err as { status?: number }).status
+    const isProviderRejection = status === 401 || status === 403
     if (isProviderRejection) {
       return NextResponse.json(
         { error: 'AI provider rejected the API key. Check your key in Settings.' },

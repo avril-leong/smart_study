@@ -1,23 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { updateSM2 } from '@/lib/spaced-repetition/sm2'
+import { gradeAnswer } from '@/lib/ai/grade-answer'
 
 export async function POST(request: NextRequest) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { questionId, answerGiven, isCorrect: clientIsCorrect, smQuality } = await request.json()
+  const { questionId, answerGiven } = await request.json()
   const service = createServiceRoleClient()
 
-  // Fetch question to validate MCQ answer server-side
+  // Fetch question to grade the answer server-side — never trust client-supplied correctness/quality
   const { data: question } = await service.from('questions').select('*').eq('id', questionId).single()
   if (!question) return NextResponse.json({ error: 'Question not found' }, { status: 404 })
 
-  let isCorrect = clientIsCorrect
-  if (question.type === 'mcq') {
-    isCorrect = question.correct_answer === answerGiven
-  }
+  const isCorrect = gradeAnswer(question, answerGiven)
+  const smQuality = question.type !== 'short_answer' && isCorrect ? 5 : isCorrect ? 4 : 1
 
   // Append to answer_log
   await service.from('answer_log').insert({
